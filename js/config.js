@@ -38,18 +38,30 @@ export const T = 0.10;                       // grosor de muro
 export const WATER = { from: 0.5 };          // las tomas empiezan a mitad de la pared larga (fracción de W)
 export const BOILER = { enabled: true, width: 0.45, label: 'Junkers de gas' };  // calentador tapado junto a la ventana
 
-// Electrodomésticos de partida (metros). También se cambian desde «Mis medidas».
+// Electrodomésticos de partida (metros): los que tengo en casa. También se cambian desde «Mis medidas».
 // Nevera LG side-by-side (serie GSLV): 91,3 × 73,5 × 179 cm, con 5 cm de ventilación detrás.
+// Lavadora LG F4WR5509A0W: 60 × 56,5 × 85 cm. Secadora Zanussi ZDH8373W: 60 × 60 × 85 cm.
+// Lavavajillas Whirlpool WFC 3C33 PF, de libre instalación: 60 × 59 × 85 cm (82 sin la tapa de arriba).
+// Los dos últimos campos (fondo y alto del lavavajillas) van al final para que los enlaces antiguos sigan valiendo.
 export const DEFAULT_APPLIANCES = {
   fridgeW: 0.913, fridgeD: 0.735, fridgeH: 1.79,
-  dwW: 0.60,                                        // lavavajillas integrable (45 o 60)
-  washerW: 0.597, washerD: 0.565, washerH: 0.85,
-  dryerW: 0.597, dryerD: 0.60, dryerH: 0.85,
+  dwW: 0.60,                                        // lavavajillas (45 o 60)
+  washerW: 0.60, washerD: 0.565, washerH: 0.85,
+  dryerW: 0.60, dryerD: 0.60, dryerH: 0.85,
   hobW: 0.60,                                       // placa (60, 70, 80 o 90)
+  dwD: 0.59, dwH: 0.85,
 };
+// Modelo que se nombra en el panel mientras las medidas sean las de partida
+export const APPLIANCE_MODELS = {
+  fridge: { name: 'LG side-by-side', keys: ['fridgeW', 'fridgeD', 'fridgeH'] },
+  washer: { name: 'LG F4WR5509A0W', keys: ['washerW', 'washerD', 'washerH'] },
+  dryer: { name: 'Zanussi ZDH8373W', keys: ['dryerW', 'dryerD', 'dryerH'] },
+  dw: { name: 'Whirlpool WFC 3C33 PF', keys: ['dwW', 'dwD', 'dwH'] },
+};
+export const DW_LID = 0.03;   // lo que baja un lavavajillas de libre instalación al quitarle la tapa
 export const APPLIANCE_LIMITS = {
   fridgeW: [0.55, 1.10], fridgeD: [0.55, 0.80], fridgeH: [1.40, 2.10],
-  dwW: [0.45, 0.60],
+  dwW: [0.45, 0.60], dwD: [0.50, 0.65], dwH: [0.80, 0.90],
   washerW: [0.40, 0.70], washerD: [0.40, 0.70], washerH: [0.70, 0.95],
   dryerW: [0.40, 0.70], dryerD: [0.40, 0.70], dryerH: [0.70, 0.95],
   hobW: [0.30, 0.90],

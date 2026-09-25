@@ -63,6 +63,7 @@ for (const id of presets) {
   check(s.std > 8, `Estilo ${id}`);
 }
 
+await page.evaluate(() => { window.__kitchenSaveWidth = 900; });
 const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }).catch(() => null), page.click('#save-img')]);
 check(!!download && /\.png$/.test(download.suggestedFilename()), `Guardar imagen (${download ? download.suggestedFilename() : 'sin descarga'})`);
 
@@ -84,6 +85,18 @@ for (const layout of ['A', 'B', 'C']) {
   const n = await page.evaluate(() => document.querySelectorAll('#checks .check').length);
   check(s.std > 8 && n >= 5, `Medidas propias · distribución ${layout}: se dibuja y hay ${n} comprobaciones`);
 }
+// Cotas de los electrodomésticos a la vista y modelos de partida en el panel
+await page.evaluate(() => { const k = window.__kitchen; k.state.layout = 'C'; k.state.fridgePos = 'pared'; k.applyAll(); k.goView('iso', true); k.frame(); });
+const adims = await page.evaluate(() => ({ n: [...document.querySelectorAll('.dim.ap')].filter(e => e.style.display !== 'none').length, apps: document.getElementById('apps').textContent, checks: [...document.querySelectorAll('#checks .check .t')].map(e => e.textContent) }));
+check(adims.n >= 8, `Cotas de electrodomésticos visibles (${adims.n} etiquetas)`);
+check(['LG F4WR5509A0W', 'Zanussi ZDH8373W', 'Whirlpool WFC 3C33 PF'].every(m => adims.apps.includes(m)), 'El panel nombra la lavadora, la secadora y el lavavajillas');
+check(adims.apps.includes('60 × 59 × 85') && adims.checks.includes('Lavavajillas bajo encimera'), 'Lavavajillas de libre instalación: medidas y aviso de la tapa');
+await page.click('#t-adims');
+await page.evaluate(() => window.__kitchen.frame());
+const hidden = await page.evaluate(() => [...document.querySelectorAll('.dim.ap')].filter(e => e.style.display !== 'none').length);
+check(hidden === 0, 'El botón oculta las cotas de electrodomésticos');
+await page.click('#t-adims');
+
 // Electrodomésticos: nevera más estrecha y una lavadora demasiado alta para ir bajo encimera
 await page.evaluate(() => { const k = window.__kitchen; k.state.layout = 'C'; });
 for (const [k, v] of [['fridgeW', 84], ['fridgeD', 70.5], ['washerH', 90]]) await page.fill(`#m-${k}`, String(v));

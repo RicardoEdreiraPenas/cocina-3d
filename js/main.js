@@ -9,7 +9,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { DEFAULT_ROOM, ROOM_LIMITS, T, WATER, BOILER, DEFAULT_APPLIANCES, APPLIANCE_LIMITS, FRIDGE_BACK, UNDER_COUNTER, CATALOG, PRESETS, DEFAULT_DESIGN } from './config.js';
+import { DEFAULT_ROOM, ROOM_LIMITS, T, WATER, BOILER, DEFAULT_APPLIANCES, APPLIANCE_LIMITS, FRIDGE_BACK, UNDER_COUNTER, APPLIANCE_MODELS, DW_LID, CATALOG, PRESETS, DEFAULT_DESIGN } from './config.js';
 import { createTextures } from './textures.js';
 import { panelInfo } from './info.js';
 
@@ -125,12 +125,13 @@ const M = {
   water: new THREE.MeshBasicMaterial({ color: '#3aa0e0', transparent: true, opacity: 0.1, depthWrite: false }),
   waterLine: new THREE.LineBasicMaterial({ color: '#2b8fd6' }),
   dimLine: new THREE.LineBasicMaterial({ color: '#b8893f', toneMapped: false }),
+  adimLine: new THREE.LineBasicMaterial({ color: '#e0762e', toneMapped: false }),
 };
 
 /* ───────── Estado ───────── */
 const state = {
   layout: DEFAULT_DESIGN.layout, fridgePos: DEFAULT_DESIGN.fridgePos, fin: { ...DEFAULT_DESIGN.fin }, room: { ...DEFAULT_ROOM }, appl: { ...DEFAULT_APPLIANCES },
-  water: true, night: false, open: false, dims: true, tags: window.innerWidth > 860, rot: false, hq: HQ_DEFAULT,
+  water: true, night: false, open: false, dims: true, adims: true, tags: window.innerWidth > 860, rot: false, hq: HQ_DEFAULT,
 };
 
 /* ───────── Acabados (catálogo en js/config.js) ───────── */
@@ -410,25 +411,37 @@ function buildFridge() {
   B(fg, -fgW + 0.025, -0.03, 0.25, FR.h - 0.08, -0.12, -0.095, inner, { cast: false });
   const fgA = { obj: fg.rotation, key: 'y', closed: 0, open: 1.57 };
   fridgeAnim.push({ obj: fz.rotation, key: 'y', closed: 0, open: -1.9 }, fgA); fridge.userData.fgAnim = fgA;
+  appDims(g, FR.w, FR.h, FR.d);
   fridge.userData.body = g; fridge.add(g);
 }
 
 /* ───────── Módulos de cocina ───────── */
 const Z_CAR = 0.56, Z_FR = 0.58, Y_PL = 0.14, Y_CT = 0.86, Y_TOP = 0.90, TOPY = 2.17;
+/* Lavavajillas de libre instalación bajo la encimera: blanco, hasta el suelo, sin la tapa si no cabe con ella */
+function dwFit() {
+  const a = state.appl, lid = a.dwH > UNDER_COUNTER.h;
+  return { lid, h: Math.min(lid ? a.dwH - DW_LID : a.dwH, Y_CT - 0.004) };
+}
+function dishwasher(g, x0, w, animList) {
+  const a = state.appl, dw = a.dwW - 0.002, d = a.dwD, { h } = dwFit(), xa = x0 + (w - dw) / 2;
+  const u = new THREE.Group(); u.position.x = xa; g.add(u);
+  RB(u, 0, dw, 0.004, h, 0, d - 0.02, M.white, 0.01);
+  B(u, 0.02, dw - 0.02, 0.004, 0.10, d - 0.03, d - 0.018, M.applPlastic);                 // zócalo del aparato
+  B(u, 0.004, dw - 0.004, h - 0.075, h - 0.004, d - 0.02, d, M.white);                      // panel de mandos
+  B(u, 0.05, dw * 0.55, h - 0.055, h - 0.025, d, d + 0.003, M.display);
+  B(u, dw * 0.62, dw - 0.05, h - 0.055, h - 0.025, d, d + 0.002, M.applPlastic);
+  const p = new THREE.Group(); p.position.set(0, 0.10, d - 0.02); u.add(p);            // puerta, bisagra abajo
+  B(p, 0.004, dw - 0.004, 0, h - 0.08 - 0.10, 0, 0.02, M.white);
+  B(p, dw * 0.3, dw * 0.7, h - 0.23, h - 0.2, 0.02, 0.03, M.applPlastic, { cast: false });
+  animList.push({ obj: p.rotation, key: 'x', closed: 0, open: 1.45 });
+  appDims(u, a.dwW, a.dwH, d, { x0: -0.001 });
+}
 function baseModule(g, x0, w, type, mats, animList) {
   const x1 = x0 + w, gap = 0.004;
   if (type === 'filler') { B(g, x0, x1, 0, Y_CT, 0, Z_FR, mats.low); return; }
-  if (type !== 'dw') B(g, x0, x1, Y_PL, Y_CT, 0, Z_CAR, M.carcass);
+  if (type === 'dw') { dishwasher(g, x0, w, animList); return; }
+  B(g, x0, x1, Y_PL, Y_CT, 0, Z_CAR, M.carcass);
   B(g, x0 + 0.002, x1 - 0.002, 0, Y_PL, 0, Z_FR - 0.06, mats.plinth);
-  if (type === 'dw') {
-    B(g, x0 + 0.005, x1 - 0.005, Y_PL, Y_CT - 0.005, 0, Z_CAR, M.steel);
-    B(g, x0 + 0.03, x1 - 0.03, 0.45, 0.46, 0.02, Z_CAR + 0.001, M.steelDark);
-    const p = new THREE.Group(); p.position.set(x0, Y_PL, Z_FR); g.add(p);
-    B(p, gap, w - gap, gap, 0.72 - gap, -0.02, 0, mats.low);
-    B(p, 0.02, w - 0.02, 0.02, 0.70, -0.03, -0.02, M.steel, { cast: false });
-    animList.push({ obj: p.rotation, key: 'x', closed: 0, open: 1.45 });
-    return;
-  }
   const heights = { drawers3: [0.18, 0.27, 0.27], drawers2: [0.36, 0.36], doors2: [0.72], door1: [0.72], blind: [0.72] }[type] || [0.72];
   let top = Y_CT;
   for (const h of heights) {
@@ -493,7 +506,14 @@ function sink(g, xc, zc) {
   cyl(g, 0.013, 0.06, M.chrome, xc, Y_TOP + 0.31, tz + 0.2);
   B(g, xc + 0.02, xc + 0.1, Y_TOP + 0.2, Y_TOP + 0.21, tz - 0.005, tz + 0.005, M.chrome);
 }
-function hob(g, xc, zc) { const h = state.appl.hobW / 2 - 0.005; B(g, xc - h, xc + h, Y_TOP, Y_TOP + 0.006, zc - 0.26, zc + 0.26, M.hob); }
+function hob(g, xc, zc) {
+  const h = state.appl.hobW / 2 - 0.005; B(g, xc - h, xc + h, Y_TOP, Y_TOP + 0.006, zc - 0.26, zc + 0.26, M.hob);
+  const grp = new THREE.Group(); grp.userData.adims = true; grp.visible = state.adims; g.add(grp);
+  const y = Y_TOP + 0.015, z = 0.64, x0 = xc - state.appl.hobW / 2, x1 = xc + state.appl.hobW / 2;
+  grp.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([[x0, y, z], [x1, y, z], [x0, y, z - 0.03], [x0, y, z + 0.03], [x1, y, z - 0.03], [x1, y, z + 0.03]].map(p => new THREE.Vector3(...p))), M.adimLine));
+  const el = document.createElement('div'); el.className = 'dim ap'; el.textContent = `placa ${c1(state.appl.hobW)}`;
+  const o = new CSS2DObject(el); o.position.set(xc, y + 0.05, z); o.visible = state.adims; grp.add(o);
+}
 // Lavadora / secadora 60 cm (frente local +z)
 function washer(kind, animList) {
   const a = state.appl, g = new THREE.Group();
@@ -512,7 +532,22 @@ function washer(kind, animList) {
   glass.rotation.x = Math.PI / 2; glass.position.set(R, 0, 0.012); p.add(glass);
   B(g, cx - 0.14, cx + 0.14, cy - 0.14, cy + 0.14, d - 0.02, d - 0.001, M.steelDark, { cast: false });
   animList.push({ obj: p.rotation, key: 'y', closed: 0, open: -1.7 });
+  appDims(g, w, h, d);
   return g;
+}
+/* Cotas de un electrodoméstico en sus coordenadas locales: ancho y fondo a ras de suelo delante, alto en la esquina.
+   w, h, d: medidas reales; zf: dónde está el frente (por defecto d) */
+function appDims(parent, w, h, d, { zf = d, x0 = 0, y0 = 0, label = true } = {}) {
+  const grp = new THREE.Group(); grp.userData.adims = true; grp.visible = state.adims; parent.add(grp);
+  const z = zf + 0.06, t = 0.035;
+  const seg = (pts) => { const geo = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))); grp.add(new THREE.LineSegments(geo, M.adimLine)); };
+  const lab = (text, p) => { const el = document.createElement('div'); el.className = 'dim ap'; el.textContent = text; const o = new CSS2DObject(el); o.position.set(...p); o.visible = state.adims; grp.add(o); };
+  const yb = y0 + 0.03;
+  seg([[x0, yb, z], [x0 + w, yb, z], [x0, yb - t, z], [x0, yb + t, z], [x0 + w, yb - t, z], [x0 + w, yb + t, z]]);
+  const xr = x0 + w + 0.03;
+  seg([[xr, y0, z], [xr, y0 + h, z], [xr - t, y0, z], [xr + t, y0, z], [xr - t, y0 + h, z], [xr + t, y0 + h, z]]);
+  if (label) { lab(`ancho ${c1(w)} · fondo ${c1(d)}`, [x0 + w / 2, yb + 0.07, z]); lab(`alto ${c1(h)}`, [xr + 0.02, y0 + h * 0.62, z]); }
+  return grp;
 }
 function tag(parent, text, dimsTxt, x, y, z) {
   const el = document.createElement('div'); el.className = 'tag'; el.innerHTML = `<b>${text}</b><span>${dimsTxt}</span>`;
@@ -761,7 +796,7 @@ function buildLayout() {
   }
 
   // Etiquetas y atrezo de la pared larga
-  const tags = { sink: ['Fregadero', w => `${cm(w)} cm`, 1.10, 0.3], dw: ['Lavavajillas', () => dimsTxt(A.dwW - 0.002, 0.55, 0.82), 1.02, 0.55], washer: ['Lavadora', () => dimsTxt(A.washerW, A.washerD, A.washerH), 0.72, 1.0], dryer: ['Secadora', () => dimsTxt(A.dryerW, A.dryerD, A.dryerH), 1.02, 0.55], hob: ['Placa + campana', () => `${c1(A.hobW)} cm`, 1.62, 0.3] };
+  const tags = { sink: ['Fregadero', w => `${cm(w)} cm`, 1.10, 0.3], dw: ['Lavavajillas', () => dimsTxt(A.dwW, A.dwD, A.dwH), 1.02, 0.55], washer: ['Lavadora', () => dimsTxt(A.washerW, A.washerD, A.washerH), 0.72, 1.0], dryer: ['Secadora', () => dimsTxt(A.dryerW, A.dryerD, A.dryerH), 1.02, 0.55], hob: ['Placa + campana', () => `${c1(A.hobW)} cm`, 1.62, 0.3] };
   if (P.washer || P.dryer) met.laundryUnder = true;
   for (const [id, [t, d, y, z]] of Object.entries(tags)) if (P[id]) tag(g, t, d(P[id].w), P[id].x, y, z);
   if (P.washer) met.washerPos = { x: P.washer.x, z: 0 };
@@ -789,7 +824,7 @@ function buildLayout() {
   MET = met;
 
   scene.add(g);
-  g.traverse(o => { if (o.isCSS2DObject) o.visible = state.tags; });
+  g.traverse(o => { if (o.isCSS2DObject && !o.element.classList.contains('dim')) o.visible = state.tags; });
   document.getElementById('fridge-group').hidden = L !== 'C';
   document.getElementById('st-enc').textContent = `${fmt(met.counter)} m`;
   applyNight(); renderInfo();
@@ -817,7 +852,7 @@ function buildBoiler(g, x0, x1, mats) {
 
 /* ───────── Panel: electrodomésticos y comprobaciones (textos en js/info.js) ───────── */
 function renderInfo() {
-  const { apps, checks } = panelInfo({ L: state.layout, mode: fridgeMode(), want: state.fridgePos, met: MET, room: G, ap: state.appl, under: UNDER_COUNTER, fmt, cm, c1, dimsTxt, names: NAMES, boiler: BOILER });
+  const { apps, checks } = panelInfo({ L: state.layout, mode: fridgeMode(), want: state.fridgePos, met: MET, room: G, ap: state.appl, under: UNDER_COUNTER, models: APPLIANCE_MODELS, defaults: DEFAULT_APPLIANCES, dwFit: dwFit(), fmt, cm, c1, dimsTxt, names: NAMES, boiler: BOILER });
   document.getElementById('apps').innerHTML = apps.map(([n, d, w]) => `<div class="row"><span class="n">${n}</span><span class="d">${d}</span><span class="w">${w}</span></div>`).join('');
   document.getElementById('checks').innerHTML = checks.map(([s, l, t, x]) => `<div class="check"><span class="pill ${s}">${l}</span><span class="t">${t}</span><span class="x">${x}</span></div>`).join('');
   $('st-area').textContent = `${fmt(G.area, 1)} m²`;
@@ -888,6 +923,12 @@ $('t-night').onclick = () => { state.night = true; $('t-day').setAttribute('aria
 $('t-open').onclick = () => { state.open = !state.open; $('t-open').setAttribute('aria-pressed', state.open); };
 $('t-dims').onclick = () => { state.dims = !state.dims; $('t-dims').setAttribute('aria-pressed', state.dims); };
 $('t-tags').onclick = () => { state.tags = !state.tags; $('t-tags').setAttribute('aria-pressed', state.tags); scene.traverse(o => { if (o.isCSS2DObject && !o.element.classList.contains('dim')) o.visible = state.tags; }); syncWater(); };
+function syncAdims() {
+  [layoutGroup, fridge].forEach(root => root && root.traverse(o => {
+    if (o.userData.adims) { o.visible = state.adims; o.children.forEach(c => { if (c.isCSS2DObject) c.visible = state.adims; }); }
+  }));
+}
+$('t-adims').onclick = () => { state.adims = !state.adims; $('t-adims').setAttribute('aria-pressed', state.adims); syncAdims(); };
 $('t-water').onclick = () => { state.water = !state.water; $('t-water').setAttribute('aria-pressed', state.water); syncWater(); };
 $('t-rot').onclick = () => { state.rot = !state.rot; $('t-rot').setAttribute('aria-pressed', state.rot); controls.autoRotate = state.rot; };
 $('t-hq').onclick = () => { state.hq = !state.hq; setQuality(); };
@@ -897,9 +938,10 @@ $('copy-link').onclick = async () => {
   try { await navigator.clipboard.writeText(location.href); flash('Enlace copiado'); } catch { flash(location.href); }
 };
 // Guardar la vista actual como PNG en alta calidad (hasta ~2400 px de ancho)
-$('save-img').onclick = () => {
+$('save-img').onclick = () => { flash('Preparando la imagen…'); setTimeout(saveImage, 30); };
+function saveImage() {
   const w = stage.clientWidth, h = stage.clientHeight, hq = state.hq;
-  const pr = Math.min(3, Math.max(1, 2400 / w));
+  const pr = Math.min(3, Math.max(1, (window.__kitchenSaveWidth || 2400) / w));   // el test usa un ancho menor
   renderer.setPixelRatio(pr); composer.setPixelRatio(pr); composer.setSize(w, h);
   state.hq = true; frame(performance.now()); state.hq = hq;
   renderer.domElement.toBlob(blob => {
@@ -912,7 +954,7 @@ $('save-img').onclick = () => {
     setTimeout(() => URL.revokeObjectURL(a.href), 3000);
     flash('Imagen guardada');
   }, 'image/png');
-};
+}
 controls.addEventListener('start', () => { tween = null; });
 
 /* ───────── Panel de acabados ───────── */
@@ -955,6 +997,7 @@ const AFIELDS = [
   ['fridgeW', 'Nevera: ancho'], ['fridgeD', 'Nevera: fondo'], ['fridgeH', 'Nevera: alto'], ['dwW', 'Lavavajillas: ancho'],
   ['washerW', 'Lavadora: ancho'], ['washerD', 'Lavadora: fondo'], ['washerH', 'Lavadora: alto'], ['hobW', 'Placa: ancho'],
   ['dryerW', 'Secadora: ancho'], ['dryerD', 'Secadora: fondo'], ['dryerH', 'Secadora: alto'],
+  ['dwD', 'Lavavajillas: fondo'], ['dwH', 'Lavavajillas: alto'],
 ];
 function sanitizeAppliances(a) {
   const out = { ...DEFAULT_APPLIANCES, ...a };
@@ -1037,7 +1080,7 @@ function loadHash(h) {
   }
   if (m[5]) {
     const v = m[5].split('-').map(Number);
-    if (v.length === AKEYS.length && v.every(n => Number.isFinite(n))) state.appl = sanitizeAppliances(Object.fromEntries(AKEYS.map((k, i) => [k, v[i] / 1000])));
+    if (v.length && v.length <= AKEYS.length && v.every(n => Number.isFinite(n))) state.appl = sanitizeAppliances(Object.fromEntries(v.map((n, i) => [AKEYS[i], n / 1000])));
   }
   return true;
 }

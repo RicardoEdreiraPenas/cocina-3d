@@ -13,7 +13,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 ## Qué hace
 
 - En «Mis medidas» cambias las paredes, la altura del techo, la puerta de entrada, la ventana fija y la puerta al patio. Un plano pequeño se va dibujando mientras escribes y, al aplicar, la cocina se rehace: los muebles se reparten solos en módulos de 60, 45, 40 y 30 cm, y el panel avisa de lo que no cabe. Si la pared de la puerta mide lo mismo que la larga, la planta es rectangular.
-- En el mismo sitio puedes poner las medidas de tus electrodomésticos: ancho, fondo y alto de la nevera, la lavadora y la secadora, y el ancho del lavavajillas y de la placa. Los huecos se ajustan y el panel avisa, por ejemplo, si la lavadora no entra bajo la encimera o si la nevera sobresale del quiebro.
+- En el mismo sitio puedes poner las medidas de tus electrodomésticos: ancho, fondo y alto de la nevera, el lavavajillas, la lavadora y la secadora, y el ancho de la placa. Cada aparato lleva sus cotas en naranja dentro del 3D (se ocultan con un botón). Los huecos se ajustan y el panel avisa, por ejemplo, si la lavadora no entra bajo la encimera o si la nevera sobresale del quiebro.
 
   ![Mis medidas con una cocina rectangular de 4,00 × 3,20](docs/mis-medidas.jpg)
 
@@ -66,7 +66,7 @@ Lo más rápido es «Mis medidas», en la propia web. Si quieres que tu cocina s
 
 - `DEFAULT_ROOM` son las medidas de partida, en metros: pared larga, pared izquierda, pared de la puerta, quiebro, techo, puerta de entrada, ventana fija y puerta al patio.
 - `WATER` marca dónde empiezan las tomas de agua y `BOILER` el mueble del calentador (se puede desactivar).
-- `DEFAULT_APPLIANCES` tiene las medidas de partida de la nevera, el lavavajillas, la lavadora, la secadora y la placa, y `APPLIANCE_LIMITS` los márgenes que acepta el formulario.
+- `DEFAULT_APPLIANCES` tiene las medidas de partida, que son las de mis aparatos: lavadora LG F4WR5509A0W (60 × 56,5 × 85), secadora Zanussi ZDH8373W (60 × 60 × 85) y lavavajillas Whirlpool WFC 3C33 PF de libre instalación (60 × 59 × 85, que bajo la encimera va sin la tapa). `APPLIANCE_LIMITS` tiene los márgenes que acepta el formulario y `APPLIANCE_MODELS` los nombres que salen en el panel.
 - `CATALOG` y `PRESETS` son los acabados y los estilos. Para añadir un color solo hay que meter otra entrada `{ id, name, type: 'color', color: '#...' }`.
 
 Los muebles se reparten en `buildLayout()`, dentro de [`js/main.js`](js/main.js). Cada distribución dice qué módulos van pegados al principio y cuáles al final de la pared (por ejemplo `I('dw', 0.60, 'dw')` es un lavavajillas de 60 cm), y `packRun()` rellena el hueco del medio. Los textos del panel salen de [`js/info.js`](js/info.js), calculados con las medidas.

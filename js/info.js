@@ -3,30 +3,33 @@
  * Todo se calcula a partir de las medidas y de dónde ha quedado cada mueble,
  * así que sigue valiendo cuando alguien cambia las medidas en «Mis medidas».
  *
- * ctx = { L, mode, want, met, room, ap, under, fmt, cm, c1, dimsTxt, names, boiler }
+ * ctx = { L, mode, want, met, room, ap, under, models, dwFit, fmt, cm, c1, dimsTxt, names, boiler }
  *   L     distribución 'A' | 'B' | 'C'
  *   mode  dónde está la nevera: 'pared' (empotrada) | 'hueco'
  *   want  dónde se pidió en la opción C (puede no caber)
  *   met   métricas de buildLayout(): posiciones, pasos, lo que no cabe…
  *   room  geometría de la estancia (computeRoom)
  *   ap    medidas de los electrodomésticos (metros); under: hueco bajo encimera
+ *   models  modelo de partida de cada aparato (defaults: sus medidas); dwFit: cómo entra el lavavajillas bajo la encimera
  * Cada comprobación es [estado, etiqueta, título, explicación]; estado: 'ok' | 'warn'.
  */
-export function panelInfo({ L, mode, want, met, room: g, ap, under, fmt, cm, c1, dimsTxt, names, boiler }) {
+export function panelInfo({ L, mode, want, met, room: g, ap, under, models = {}, defaults = {}, dwFit = {}, fmt, cm, c1, dimsTxt, names, boiler }) {
   const FRW = ap.fridgeW, m = v => `${fmt(v)} m`, cms = v => `${Math.max(0, cm(v))} cm`;
   const has = id => met.run && met.run[id];
   const dropped = new Set(met.dropped);
 
+  // Si las medidas siguen siendo las de partida, se nombra el modelo
+  const model = id => { const md = models[id]; return md && md.keys.every(k => Math.abs(ap[k] - defaults[k]) < 0.0005) ? ` · ${md.name}` : ''; };
   const apps = [];
-  apps.push(['Nevera americana', dimsTxt(ap.fridgeW, ap.fridgeD, ap.fridgeH), mode === 'pared'
+  apps.push(['Nevera americana' + model('fridge'), dimsTxt(ap.fridgeW, ap.fridgeD, ap.fridgeH), mode === 'pared'
     ? `En la pared de la puerta, mirando a la encimera, entre ${met.pantryW ? 'la despensa y ' : ''}la torre de horno. Con 2,3 cm libres a cada lado, 5 cm arriba y 5 cm detrás.`
     : `En el hueco junto al quiebro, con 5 cm de ventilación detrás. Mejor un modelo sin toma de agua (dispensador con depósito).`]);
   if (has('sink')) apps.push(['Fregadero', cms(met.run.sink.w), `Centro a ${m(met.run.sink.x)} de la esquina${met.run.sink.x >= g.waterFrom ? ', encima de las tomas' : ''}.`]);
-  if (has('dw')) apps.push(['Lavavajillas integrable', `${c1(ap.dwW)} cm`, 'Junto al fregadero, con el frente panelado a juego.']);
+  if (has('dw')) apps.push(['Lavavajillas' + model('dw'), dimsTxt(ap.dwW, ap.dwD, ap.dwH), `De libre instalación, junto al fregadero y bajo la encimera${dwFit.lid ? `, sin la tapa de arriba (queda en ${c1(dwFit.h)} cm)` : ''}.`]);
   const washerTxt = { A: 'Bajo encimera en el brazo izquierdo de la L.', B: 'Abajo en la columna de la pared izquierda, junto a la entrada.', C: 'Bajo encimera en la pared larga, junto al lavavajillas.' }[L];
   const dryerTxt = { A: 'Al lado de la lavadora, bajo encimera. Elige una de 60 cm de fondo como máximo.', B: 'Encima de la lavadora con kit de unión.', C: 'Al final del mueble, junto a la ventana. El condensado va al desagüe de la lavadora o a su depósito.' }[L];
-  apps.push(['Lavadora', dimsTxt(ap.washerW, ap.washerD, ap.washerH), dropped.has('washer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : washerTxt]);
-  apps.push(['Secadora bomba de calor', dimsTxt(ap.dryerW, ap.dryerD, ap.dryerH), dropped.has('dryer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : dryerTxt]);
+  apps.push(['Lavadora' + model('washer'), dimsTxt(ap.washerW, ap.washerD, ap.washerH), dropped.has('washer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : washerTxt]);
+  apps.push(['Secadora bomba de calor' + model('dryer'), dimsTxt(ap.dryerW, ap.dryerD, ap.dryerH), dropped.has('dryer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : dryerTxt]);
   if (has('hob')) apps.push(['Placa de inducción + campana', `${c1(ap.hobW)} cm`, `Centro a ${m(met.run.hob.x)}${met.sinkHobFree != null ? `, con ${m(Math.max(0, met.sinkHobFree))} de encimera entre la placa y el fregadero` : ''}.`]);
 
   const checks = [];
@@ -70,6 +73,14 @@ export function panelInfo({ L, mode, want, met, room: g, ap, under, fmt, cm, c1,
     else checks.push(['ok', 'Bien', 'Lavadora y secadora bajo encimera', `Caben de alto (${c1(Math.max(ap.washerH, ap.dryerH))} de ${c1(under.h)} cm) y de fondo.`]);
   } else if (met.stackH) {
     checks.push([met.stackH <= 1.75 ? 'ok' : 'warn', met.stackH <= 1.75 ? 'Bien' : 'Alto', 'Columna de lavado', `Apiladas suman ${c1(met.stackH)} cm con el kit de unión${met.stackH > 1.75 ? '; la secadora queda muy alta para cargarla con comodidad' : ''}.`]);
+  }
+
+  // Lavavajillas bajo la encimera
+  if (has('dw')) {
+    if (dwFit.lid && dwFit.h > under.h) checks.push(['warn', 'No entra', 'Lavavajillas bajo encimera', `Mide ${c1(ap.dwH)} cm de alto y ni sin la tapa baja de ${c1(under.h)} cm. Busca uno integrable o de 82 cm.`]);
+    else if (dwFit.lid) checks.push(['ok', 'Sin tapa', 'Lavavajillas bajo encimera', `Con la tapa mide ${c1(ap.dwH)} cm y bajo la encimera caben ${c1(under.h)}: se le quita la tapa de arriba (lo permite el fabricante) y queda en ${c1(dwFit.h)} cm. Las patas regulables hacen el resto.`]);
+    else checks.push(['ok', 'Bien', 'Lavavajillas bajo encimera', `Con ${c1(ap.dwH)} cm de alto entra bajo la encimera sin tocar nada.`]);
+    if (ap.dwD > under.d - 0.02) checks.push(['warn', 'Sobresale', 'Fondo del lavavajillas', `Tiene ${c1(ap.dwD)} cm de fondo y la encimera ${c1(under.d)}: con las tomas detrás sobresale un poco.`]);
   }
 
   // Muebles de enfrente
