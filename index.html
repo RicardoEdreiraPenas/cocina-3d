@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cocina Albuixech 3D</title>
+<meta name="description" content="Configurador 3D de cocina: distribuciones, electrodomésticos, acabados y comprobaciones de medidas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <div id="loading">Montando la cocina…</div>
+    <div id="labels"></div>
+    <div id="hint">Arrastra para girar · rueda o pellizco para acercar</div>
+    <div id="views" role="group" aria-label="Vistas de cámara">
+      <button class="vbtn" id="v-entrada" data-view="entrada">Desde la puerta</button>
+      <button class="vbtn" id="v-patio" data-view="patio">Desde el patio</button>
+      <button class="vbtn" id="v-nevera" data-view="nevera">Zona nevera</button>
+      <button class="vbtn" id="v-iso" data-view="iso" aria-pressed="true">Maqueta</button>
+      <button class="vbtn" id="v-planta" data-view="planta">Planta</button>
+    </div>
+  </div>
+
+  <aside id="panel">
+    <header>
+      <h1>Cocina con salida al patio</h1>
+      <p class="sub">Render 3D a partir de tu croquis. Puerta de 80 cm abajo a la izquierda. En el lado derecho, ventana fija sobre la encimera y puerta al patio.</p>
+      <div class="stats">
+        <div class="stat"><b>11,3 m²</b><span>Superficie</span></div>
+        <div class="stat"><b>4,78 × 2,64</b><span>Metros</span></div>
+        <div class="stat"><b id="st-enc">5,88 m</b><span>Encimera</span></div>
+      </div>
+    </header>
+
+    <div class="group">
+      <div class="label">Distribución</div>
+      <div class="seg three" role="group" aria-label="Distribución">
+        <button class="btn" id="l-A" data-layout="A">A · En L<small>Lavado bajo encimera a la izquierda</small></button>
+        <button class="btn" id="l-B" data-layout="B">B · Lineal + columna<small>Lavado apilado en la entrada</small></button>
+        <button class="btn" id="l-C" data-layout="C" aria-pressed="true">C · Aguas al patio<small>Todo lo que usa agua junto a las tomas</small></button>
+      </div>
+    </div>
+
+    <div class="group" id="fridge-group">
+      <div class="label">Nevera en la opción C</div>
+      <div class="seg three" role="group" aria-label="Posición de la nevera">
+        <button class="btn" id="fp-pared" data-fridge="pared" aria-pressed="true">Empotrada<small>Recomendada · pared de 3,42 mirando a la encimera</small></button>
+        <button class="btn" id="fp-hueco" data-fridge="hueco">En el hueco<small>Nicho de 95 junto al quiebro</small></button>
+        <button class="btn" id="fp-entrada" data-fridge="entrada">En la entrada<small>Pared izquierda</small></button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">Estilo</div>
+      <div class="chips" id="presets"></div>
+      <div id="finishes" class="finishes"></div>
+      <div class="share">
+        <button class="btn small" id="copy-link">Copiar enlace de este diseño</button>
+        <span id="copy-msg" class="copy-msg" hidden></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">Mostrar</div>
+      <div class="chips">
+        <button class="chip" id="t-day" aria-pressed="true">Luz de día</button>
+        <button class="chip" id="t-night" aria-pressed="false">Noche</button>
+        <button class="chip" id="t-open" aria-pressed="false">Abrir puertas</button>
+        <button class="chip" id="t-dims" aria-pressed="true">Medidas</button>
+        <button class="chip" id="t-tags" aria-pressed="true">Etiquetas</button>
+        <button class="chip" id="t-water" aria-pressed="true">Tomas de agua</button>
+        <button class="chip" id="t-rot" aria-pressed="false">Girar</button>
+        <button class="chip" id="t-hq" aria-pressed="true">Alta calidad</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">Electrodomésticos</div>
+      <div class="list" id="apps"></div>
+    </div>
+
+    <div class="group">
+      <div class="label">Comprobaciones</div>
+      <div id="checks"></div>
+    </div>
+
+    <div class="group">
+      <div class="label">Supuestos del croquis</div>
+      <ul class="notes">
+        <li><b>Muro de la balconera:</b> dibujado 1,73 m, pero 2,64 − 0,95 da 1,69 m. El modelo usa 1,69 m para respetar el hueco de 95 cm de la nevera. Conviene volver a medir.</li>
+        <li><b>Puerta de entrada:</b> hoja de 80 cm a 10 cm de la esquina, bisagras en el lado de la pared izquierda, abre hacia dentro.</li>
+        <li><b>Lado del patio:</b> ventana fija de unos 60 cm sobre la encimera y puerta de unos 85 cm que abre hacia dentro, 2,15 m de alto.</li>
+        <li><b>Techo a 2,60 m</b> y sin ventanas en el resto de paredes.</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
