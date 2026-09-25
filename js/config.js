@@ -2,38 +2,44 @@
  * Configuración de la cocina.
  * ─────────────────────────────────────────────────────────────
  * Todas las medidas en metros. El origen (0,0) es la esquina interior
- * donde se unen la pared larga (fondo) y la pared izquierda.
+ * donde se unen la pared larga y la pared izquierda.
  *   x → a lo largo de la pared larga (hacia el patio)
  *   z → hacia dentro de la cocina (hacia la pared de la puerta)
  *
- *   (0,0) ─────────────── W ──────────────┐
- *     │                                   │ ventana fija + puerta patio
- *     D                          (NX,NZ) ─┘
- *     │                             │
- *     └──── puerta ──── NX ─────────┘
+ *   (0,0) ─────────── W (pared larga) ──────────┐
+ *     │                                         │ ventana fija + puerta al patio
+ *     D (pared izquierda)              quiebro ─┘
+ *     │                                   │ notch
+ *     └──── puerta ──── NX (pared de la puerta) ┘
  *
- * Para adaptar el proyecto a otra cocina con esta misma forma,
- * cambia ROOM, DOOR, WINDOW y FRIDGE. Los muebles de las distribuciones
- * están en js/main.js (función buildLayout).
+ * Estas son las medidas de mi cocina. Desde la web se pueden cambiar en
+ * «Mis medidas» sin tocar el código; aquí se cambia el punto de partida.
  */
 
-export const ROOM = {
-  W: 4.78,          // pared larga
-  D: 2.64,          // pared izquierda
-  NX: 3.42,         // pared de la puerta (hasta el quiebro)
-  NZ: 2.64 - 0.95,  // muro del patio (el quiebro mide 0,95)
-  H: 2.60,          // altura del techo
-  T: 0.10,          // grosor de muro
+export const DEFAULT_ROOM = {
+  W: 4.78,       // pared larga
+  D: 2.64,       // pared izquierda
+  NX: 3.42,      // pared de la puerta, hasta el quiebro (si es igual a W, la planta es rectangular)
+  notch: 0.95,   // quiebro junto a la nevera
+  H: 2.60,       // altura del techo
+  doorX: 0.10,   // puerta de entrada: distancia a la esquina
+  doorW: 0.80,   // puerta de entrada: ancho
+  fixW: 0.64,    // ventana fija sobre la encimera (0 = sin ventana fija)
+  patioW: 0.80,  // puerta al patio
 };
 
-export const DOOR = { x0: 0.10, x1: 0.90, h: 2.03 };                   // puerta de 80 cm
-export const WINDOW = { z0: 0.10, split: 0.74, sill: 0.95, h: 2.15 };  // ventana fija + puerta al patio
+// Límites del formulario «Mis medidas»
+export const ROOM_LIMITS = {
+  W: [3.0, 7.0], D: [1.8, 4.5], NX: [2.0, 7.0], notch: [0.3, 3.0], H: [2.3, 3.2],
+  doorX: [0.05, 6.0], doorW: [0.6, 1.2], fixW: [0, 1.6], patioW: [0.6, 1.6],
+};
+
+export const T = 0.10;                       // grosor de muro
+export const WATER = { from: 0.5 };          // las tomas empiezan a mitad de la pared larga (fracción de W)
+export const BOILER = { enabled: true, width: 0.45, label: 'Junkers de gas' };  // calentador tapado junto a la ventana
 
 // Nevera LG side-by-side (serie GSLV): 91,3 × 73,5 × 179 cm, 5 cm de ventilación detrás
 export const FRIDGE = { w: 0.913, d: 0.735, h: 1.79, back: 0.05 };
-
-// Etiquetas de las cotas del croquis (lo que se midió a mano)
-export const DIM_LABELS = { W: '4,78', D: '2,64', NX: '3,42', notch: '0,95', notchTop: '1,36', window: '1,73*' };
 
 /*
  * Catálogo de acabados: 4 opciones por categoría, tendencias 2025–2026.

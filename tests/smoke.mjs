@@ -23,8 +23,9 @@ if (THREE_LOCAL) {
     const file = r.request().url().match(/three@0\.165\.0\/(.*)$/)[1];
     r.fulfill({ path: `${THREE_LOCAL}/${file}`, contentType: 'application/javascript' });
   });
-  await page.route(/fonts\.(googleapis|gstatic)/, r => r.fulfill({ body: '', contentType: 'text/css' }));
 }
+// Las fuentes no afectan a la prueba: se sirven vacías para no depender de la red
+await page.route(/fonts\.(googleapis|gstatic)/, r => r.fulfill({ body: '', contentType: 'text/css' }));
 
 let failed = 0;
 const check = (ok, what) => { console.log(`${ok ? '✔' : '✘'} ${what}`); if (!ok) failed++; };
@@ -68,6 +69,24 @@ check(!!download && /\.png$/.test(download.suggestedFilename()), `Guardar imagen
 await page.evaluate(() => { const k = window.__kitchen; k.state.night = true; k.state.hq = true; k.setQuality(); k.applyAll(); k.goView('entrada', true); });
 const night = await renderStats();
 check(night.std > 3, 'Noche en calidad alta (oclusión ambiental y bloom)');
+
+// Mis medidas: una cocina rectangular más pequeña, con la puerta en medio
+await page.evaluate(() => { const k = window.__kitchen; k.state.night = false; k.state.hq = false; k.setQuality(); k.applyAll(); document.getElementById('measures').open = true; });
+for (const [k, v] of [['W', 360], ['D', 300], ['NX', 360], ['doorX', 120]]) await page.fill(`#m-${k}`, String(v));
+await page.click('#m-apply');
+const custom = await page.evaluate(() => ({ g: window.__kitchen.room(), hash: location.hash, svg: document.querySelectorAll('#room-svg line').length }));
+check(Math.abs(custom.g.W - 3.6) < 1e-6 && Math.abs(custom.g.D - 3.0) < 1e-6 && !custom.g.hasNotch, 'Mis medidas: cocina rectangular de 3,60 × 3,00');
+check(/\.m360-300-360-/.test(custom.hash), `Las medidas viajan en el enlace (${custom.hash})`);
+check(custom.svg >= 4, 'El plano de «Mis medidas» se dibuja');
+for (const layout of ['A', 'B', 'C']) {
+  await page.evaluate(l => { const k = window.__kitchen; k.state.layout = l; k.buildLayout(); k.goView('iso', true); }, layout);
+  const s = await renderStats();
+  const n = await page.evaluate(() => document.querySelectorAll('#checks .check').length);
+  check(s.std > 8 && n >= 5, `Medidas propias · distribución ${layout}: se dibuja y hay ${n} comprobaciones`);
+}
+await page.click('#m-reset');
+const back = await page.evaluate(() => ({ W: window.__kitchen.room().W, hash: location.hash }));
+check(Math.abs(back.W - 4.78) < 1e-6 && !/\.m/.test(back.hash), 'Volver a las medidas originales');
 
 const hash = await page.evaluate(() => location.hash);
 check(/^#[ABC]\.(pared|hueco)\.[0-3]{6}$/.test(hash), `Enlace compartible con el diseño (${hash})`);

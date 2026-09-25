@@ -1,43 +1,90 @@
 /*
- * Textos del panel: electrodomésticos y comprobaciones de cada distribución.
- * L = 'A' | 'B' | 'C';  fridge = 'pared' | 'hueco' (solo cuenta en la opción C).
+ * Textos del panel: electrodomésticos y comprobaciones.
+ * Todo se calcula a partir de las medidas y de dónde ha quedado cada mueble,
+ * así que sigue valiendo cuando alguien cambia las medidas en «Mis medidas».
+ *
+ * ctx = { L, mode, want, met, room, fmt, cm, names, boiler }
+ *   L     distribución 'A' | 'B' | 'C'
+ *   mode  dónde está la nevera: 'pared' (empotrada) | 'hueco'
+ *   want  dónde se pidió en la opción C (puede no caber)
+ *   met   métricas de buildLayout(): posiciones, pasos, lo que no cabe…
+ *   room  geometría de la estancia (computeRoom)
  * Cada comprobación es [estado, etiqueta, título, explicación]; estado: 'ok' | 'warn'.
  */
-export function panelInfo(L, fridge) {
-  const par = L === 'C' && fridge === 'pared';
-  const pick = o => (par && 'Cp' in o) ? o.Cp : o[L];
-  const apps = [
-    ['Nevera LG americana', '91,3 × 73,5 × 179', par ? 'Dos puertas side-by-side (serie GSLV). En la pared de 3,42 mirando a la encimera, entre la despensa y la torre de hornos, con 2,3 cm a cada lado, 5 cm arriba y 5 cm detrás.' : 'Dos puertas side-by-side (serie GSLV, las habituales en España). Va en el hueco de 95 cm junto al quiebro, con 5 cm de ventilación detrás. Mejor un modelo sin toma de agua (dispensador con depósito).'],
-    ['Fregadero', '80 cm', pick({ A: 'Hacia la mitad izquierda de la pared larga (centro a 1,60 m).', B: 'Hacia la mitad izquierda de la pared larga (centro a 1,60 m).', C: 'De 90 cm, con el desagüe a 2,45 m: justo al empezar la zona de tomas.' })],
-    ['Lavavajillas integrable', '60 cm', pick({ A: 'Junto al fregadero. Frente panelado a juego.', B: 'Junto al fregadero. Frente panelado a juego.', C: 'Entre el fregadero y la lavadora, en la zona de tomas.' })],
-    ['Lavadora', '59,7 × 56,5 × 85', pick({ A: 'Bajo encimera en el brazo izquierdo de la L.', B: 'Abajo en la columna de la pared izquierda, junto a la entrada.', C: 'Bajo encimera, la penúltima de la pared larga, sobre las tomas.' })],
-    ['Secadora bomba de calor', '59,7 × 60 × 85', pick({ A: 'Al lado de la lavadora, bajo encimera. Elige una de 60 cm de fondo como máximo.', B: 'Encima de la lavadora con kit de unión. Admite fondos de hasta 65 cm.', C: 'Al final del mueble, junto a la ventana. El condensado va al desagüe de la lavadora o a su depósito.' })],
-    ['Placa de inducción + campana', '60 cm', pick({ A: 'Entre fregadero y ventana, con 1,28 m de encimera libre hasta la ventana fija.', B: 'Entre lavavajillas y nevera, con 1,88 m de encimera libre hasta la ventana.', C: 'En la mitad izquierda, con 60 cm de encimera libre hasta el fregadero y la columna de horno y microondas al lado.', Cp: 'En la mitad izquierda, con 60 cm de encimera libre hasta el fregadero. El horno va en la torre junto a la nevera.' })],
-  ];
-  const checks = [
-    pick({ A: ['warn', 'Obra', 'Tomas de agua', 'Fregadero, lavavajillas y lavadora quedan lejos de las tomas: hay que llevar agua y desagüe de 1 a 4 m, con pendiente en el desagüe.'],
-           B: ['warn', 'Obra', 'Tomas de agua', 'Fregadero y lavavajillas quedan a 1–2 m de las tomas y la columna de lavado a unos 4 m: hay que prolongar agua y desagüe.'],
-           C: ['ok', 'Sin obra', 'Tomas de agua', 'Fregadero, lavavajillas, lavadora y secadora van seguidos en la mitad derecha de la pared larga, encima de las tomas.'] }),
-    pick({ A: null, B: null,
-           C: ['ok', 'Bien', 'Dónde va la nevera', 'En el hueco de 95 cm queda enfrente del fregadero (1,9 m) y fuera del paso, pero la puerta pegada a la pared solo abre 90° y la torre de hornos ocupa la pared izquierda.'],
-           Cp: ['ok', 'Mejor', 'Dónde va la nevera', 'De frente a la encimera y a 1,24 m de ella: abres, giras y estás en el fregadero. Queda empotrada entre despensa y torre de hornos, y como sobresale 16 cm de los armarios sus dos puertas abren más de 90°.'] }),
-    par ? null : ['ok', 'Justo', 'Hueco de la nevera', '95 cm de hueco para 91,3 cm de nevera: quedan 1,9 cm por lado. La puerta pegada a la pared abre a 90°; comprueba en el manual del modelo que basta para sacar los cajones.'],
-    (L === 'C' && par) ? ['warn', 'Revisar', 'Ventilación de la nevera', 'Es un modelo de libre instalación metido entre muebles: deja 2,3 cm por lado, 5 cm arriba y 5 cm detrás y pon rejilla en el zócalo y en el mueble alto. Confírmalo en el manual del modelo LG.'] : null,
-    ['warn', 'Revisar', 'Calentador de gas', 'El mueble de 45 cm que lo tapa va abierto por abajo, con rejillas arriba y abajo en la puerta y la chimenea saliendo libre por arriba. Deja las distancias que pide el manual del Junkers y que lo valide un instalador de gas autorizado.'],
-    ['warn', 'Medir', 'Meter la nevera por la puerta', 'Una hoja de 80 cm deja unos 72–76 cm de paso y la nevera tiene 73,5 cm de fondo. Suele entrar de lado quitando sus puertas o la hoja de la puerta.'],
-    L === 'C' ? null : ['ok', 'Bien', 'Muebles de enfrente', '110 cm de bajos y altos entre la puerta y la nevera, con 1,40 m de paso hasta la encimera. Terminan 50 cm antes de la nevera para que su puerta del lado de la pared abra a 90°.'],
-    (L === 'C' && par) ? ['ok', 'Bien', 'Paso principal', '1,24 m entre la encimera y el frente de la nevera y 1,40 m hasta los armarios. Con las puertas de la nevera abiertas siguen quedando unos 75 cm para pasar.'] :
-    L === 'C' ? ['ok', 'Bien', 'Paso principal', '1,09 m entre la encimera y el costado de la nevera; el resto de la cocina queda despejado.'] :
-    ['ok', 'Bien', 'Paso principal', '1,09 m entre la encimera y el costado de la nevera. Lo recomendable para una persona cocinando es 0,90–1,20 m.'],
-    ['ok', 'Bien', 'Salida al patio', 'La encimera llega hasta la ventana fija. La puerta del patio (≈85 cm) abre hacia dentro sobre 1,07 m libres, sin tocar ningún mueble.'],
-    pick({ A: ['warn', 'Justo', 'Puerta de entrada y secadora', 'La hoja abierta a 90° queda a unos 3 cm del costado de la secadora. Conviene un tope de puerta.'],
-           B: ['ok', 'Bien', 'Puerta de entrada y columna', 'La columna de lavado acaba 57 cm antes del barrido de la puerta.'],
-           C: ['warn', 'Justo', 'Puerta de entrada y despensa', 'La hoja abierta a 90° queda a unos 3 cm del costado de la despensa. Conviene un tope de puerta.'],
-           Cp: ['ok', 'Bien', 'Puerta de entrada', 'La pared izquierda queda libre: la hoja abre sin topes y la despensa arranca justo después del marco.'] }),
-    pick({ A: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,7 m de recorrido (lo ideal es 4–7 m).'],
-           B: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,3 m de recorrido (lo ideal es 4–7 m).'],
-           C: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,6 m de recorrido (lo ideal es 4–7 m).'],
-           Cp: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 4,9 m (lo ideal es 4–7 m), con la nevera a 1,5 m del fregadero.'] }),
-  ];
-  return { apps, checks: checks.filter(Boolean) };
+export function panelInfo({ L, mode, want, met, room: g, fmt, cm, names, boiler }) {
+  const FRW = 0.913, m = v => `${fmt(v)} m`, cms = v => `${Math.max(0, cm(v))} cm`;
+  const has = id => met.run && met.run[id];
+  const dropped = new Set(met.dropped);
+
+  const apps = [];
+  apps.push(['Nevera LG americana', '91,3 × 73,5 × 179', mode === 'pared'
+    ? `En la pared de la puerta, mirando a la encimera, entre ${met.pantryW ? 'la despensa y ' : ''}la torre de horno. Con 2,3 cm libres a cada lado, 5 cm arriba y 5 cm detrás.`
+    : `En el hueco junto al quiebro, con 5 cm de ventilación detrás. Mejor un modelo sin toma de agua (dispensador con depósito).`]);
+  if (has('sink')) apps.push(['Fregadero', cms(met.run.sink.w), `Centro a ${m(met.run.sink.x)} de la esquina${met.run.sink.x >= g.waterFrom ? ', encima de las tomas' : ''}.`]);
+  if (has('dw')) apps.push(['Lavavajillas integrable', '60 cm', 'Junto al fregadero, con el frente panelado a juego.']);
+  const washerTxt = { A: 'Bajo encimera en el brazo izquierdo de la L.', B: 'Abajo en la columna de la pared izquierda, junto a la entrada.', C: 'Bajo encimera en la pared larga, junto al lavavajillas.' }[L];
+  const dryerTxt = { A: 'Al lado de la lavadora, bajo encimera. Elige una de 60 cm de fondo como máximo.', B: 'Encima de la lavadora con kit de unión.', C: 'Al final del mueble, junto a la ventana. El condensado va al desagüe de la lavadora o a su depósito.' }[L];
+  apps.push(['Lavadora', '59,7 × 56,5 × 85', dropped.has('washer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : washerTxt]);
+  apps.push(['Secadora bomba de calor', '59,7 × 60 × 85', dropped.has('dryer') || dropped.has('laundryCol') ? 'No cabe con estas medidas.' : dryerTxt]);
+  if (has('hob')) apps.push(['Placa de inducción + campana', '60 cm', `Centro a ${m(met.run.hob.x)}${met.sinkHobFree != null ? `, con ${m(Math.max(0, met.sinkHobFree))} de encimera entre la placa y el fregadero` : ''}.`]);
+
+  const checks = [];
+  // Tomas de agua
+  const far = met.wet.filter(([, d, tol]) => d > tol);
+  if (!far.length) checks.push(['ok', 'Sin obra', 'Tomas de agua', 'Todo lo que usa agua queda encima de las tomas o justo al lado.']);
+  else checks.push(['warn', 'Obra', 'Tomas de agua', `Hay que llevar agua y desagüe hasta ${far.map(([id, d]) => `${names[id].toLowerCase()} (${m(d)})`).join(', ')}. El desagüe necesita pendiente.`]);
+
+  // Dónde va la nevera
+  if (L === 'C' && want === 'pared' && mode !== 'pared') {
+    checks.push(['warn', 'No cabe', 'Nevera empotrada', `Entre la puerta y el quiebro hay ${m(Math.max(0, (met.warnings.find(w => w[0] === 'wallNoFit') || [0, 0])[1]))} y hacen falta 1,56 m (torre de horno y hueco de nevera). La muestro en el hueco.`]);
+  } else if (L === 'C') {
+    checks.push(mode === 'pared'
+      ? ['ok', 'Mejor', 'Dónde va la nevera', `De frente a la encimera, a ${m(met.pass)} de ella. Como sobresale 16 cm de los armarios, sus dos puertas abren más de 90°.`]
+      : ['ok', 'Bien', 'Dónde va la nevera', `En el hueco queda a ${m(met.fridgeSink || 0)} del fregadero y fuera del paso, pero la puerta pegada a la pared solo abre 90°.`]);
+  }
+  // Hueco de la nevera
+  if (mode === 'hueco') {
+    const margin = (g.notch - FRW) / 2;
+    if (!g.hasNotch) checks.push(['ok', 'Bien', 'Sitio de la nevera', 'Va en la esquina de la pared de la puerta con la del patio.']);
+    else if (margin >= 0.01) checks.push(['ok', margin < 0.03 ? 'Justo' : 'Bien', 'Hueco de la nevera', `${cms(g.notch)} de hueco para 91,3 cm de nevera: quedan ${fmt(margin * 100, 1)} cm por lado. Comprueba en el manual que con 90° salen los cajones.`]);
+    else checks.push(['warn', 'Sobresale', 'Hueco de la nevera', `El quiebro mide ${cms(g.notch)} y la nevera 91,3 cm: sobresale ${fmt((FRW + 0.02 - g.notch) * 100, 0)} cm hacia la cocina.`]);
+    if (met.doorHitsFridge) checks.push(['warn', 'Choca', 'Puerta de entrada y nevera', 'La puerta de entrada cae donde va la nevera. Mueve la puerta o la nevera.']);
+  } else {
+    checks.push(['warn', 'Revisar', 'Ventilación de la nevera', 'Es un modelo de libre instalación metido entre muebles: deja 2,3 cm por lado, 5 cm arriba y 5 cm detrás, con rejilla en el zócalo y en el mueble alto. Confírmalo en el manual del modelo.']);
+  }
+  if (met.boiler) checks.push(['warn', 'Revisar', 'Calentador de gas', `El mueble que tapa el ${boiler.label} va abierto por abajo, con rejillas y la chimenea libre por arriba. Deja las distancias del manual y que lo valide un instalador de gas autorizado.`]);
+
+  // Meter la nevera por la puerta
+  const clear = g.doorW - 0.07;
+  checks.push(clear >= 0.77
+    ? ['ok', 'Bien', 'Meter la nevera por la puerta', `La puerta deja unos ${cms(clear)} de paso y la nevera tiene 73,5 cm de fondo: entra de lado sin desmontar nada.`]
+    : ['warn', clear >= 0.70 ? 'Medir' : 'Difícil', 'Meter la nevera por la puerta', `Una hoja de ${cms(g.doorW)} deja unos ${cms(clear)} de paso y la nevera tiene 73,5 cm de fondo. Suele entrar de lado quitando sus puertas o la hoja de la puerta.`]);
+
+  // Muebles de enfrente
+  if (met.opp) checks.push(['ok', 'Bien', 'Muebles de enfrente', `${cms(met.opp)} de bajos y altos entre la puerta y la nevera, con ${m(met.oppPass)} de paso. Terminan 50 cm antes de la nevera para que abra su puerta.`]);
+
+  // Paso principal
+  const pass = met.pass;
+  checks.push([pass >= 0.9 ? 'ok' : 'warn', pass >= 0.9 ? 'Bien' : 'Estrecho', 'Paso principal', `${m(pass)} entre la encimera y ${mode === 'pared' ? 'el frente' : 'el costado'} de la nevera. Para una persona cocinando se recomienda entre 0,90 y 1,20 m.`]);
+
+  // Salida al patio
+  if (met.patioFree != null) checks.push([met.patioFree >= 0.9 ? 'ok' : 'warn', met.patioFree >= 0.9 ? 'Bien' : 'Justo', 'Salida al patio', `La puerta del patio (${cms(g.PD1 - g.PD0)}) abre hacia dentro sobre ${m(met.patioFree)} libres.`]);
+
+  // Puerta de entrada frente a lo que haya en la pared izquierda
+  if (met.doorGap != null) checks.push(met.doorGap < 0.05
+    ? ['warn', 'Justo', 'Puerta de entrada', `La hoja abierta a 90° queda a unos ${fmt(Math.max(0, met.doorGap) * 100, 0)} cm de ${met.leftWhat}. Conviene un tope de puerta.`]
+    : ['ok', 'Bien', 'Puerta de entrada', `La hoja abre sin tocar ${met.leftWhat}.`]);
+  else if (met.doorNearLeft) checks.push(['ok', 'Bien', 'Puerta de entrada', 'La pared izquierda queda libre: la hoja abre sin topes.']);
+
+  // Triángulo de trabajo
+  if (met.triangle != null) {
+    const t = met.triangle, ok = t >= 4 && t <= 7 && met.fridgeHob >= 1.0;
+    checks.push([ok ? 'ok' : 'warn', ok ? 'Bien' : t > 7 ? 'Largo' : 'Justo', 'Triángulo de trabajo', `Nevera, fregadero y placa suman unos ${m(t)} de recorrido (lo ideal es 4–7 m)${met.fridgeHob < 1.0 ? `, pero la nevera queda a ${m(met.fridgeHob)} de la placa` : ''}.`]);
+  }
+
+  // Lo que no cabe
+  const missing = [...dropped].filter(id => names[id] && !['washer', 'dryer', 'laundryCol'].includes(id));
+  if (missing.length) checks.push(['warn', 'No cabe', 'Faltan muebles', `Con estas medidas no caben: ${missing.map(id => names[id].toLowerCase()).join(', ')}.`]);
+
+  return { apps, checks };
 }

@@ -26,6 +26,10 @@ def main():
     html = (ROOT / 'index.html').read_text(encoding='utf-8')
     css = (ROOT / 'css/styles.css').read_text(encoding='utf-8')
     html = html.replace('<link rel="stylesheet" href="css/styles.css">', f'<style>\n{css}</style>')
+    # En el archivo único three.js se carga del CDN (los módulos locales no se abren con doble clic)
+    html = html.replace('"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"',
+                        '"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"')
+    html = html.replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">', '')
     html = html.replace('<script type="module" src="js/main.js"></script>', f'<script type="module">\n{bundle_js()}</script>')
     if '--fragment' in sys.argv:
         head = re.search(r'<head>(.*)</head>', html, re.S).group(1)

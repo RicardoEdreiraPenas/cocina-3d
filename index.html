@@ -40,13 +40,27 @@
   <aside id="panel">
     <header>
       <h1>Cocina con salida al patio</h1>
-      <p class="sub">Render 3D a partir de tu croquis. Puerta de 80 cm abajo a la izquierda. En el lado derecho, ventana fija sobre la encimera y puerta al patio.</p>
+      <p class="sub">Render 3D a partir de un croquis con medidas reales. Cambia las medidas en «Mis medidas» para probar con tu cocina.</p>
       <div class="stats">
-        <div class="stat"><b>11,3 m²</b><span>Superficie</span></div>
-        <div class="stat"><b>4,78 × 2,64</b><span>Metros</span></div>
+        <div class="stat"><b id="st-area">11,3 m²</b><span>Superficie</span></div>
+        <div class="stat"><b id="st-size">4,78 × 2,64</b><span>Metros</span></div>
         <div class="stat"><b id="st-enc">5,88 m</b><span>Encimera</span></div>
       </div>
     </header>
+
+    <details class="group measures" id="measures">
+      <summary><span class="label">Mis medidas</span><span class="sum-hint">Adapta la planta a tu cocina</span></summary>
+      <form id="room-form" novalidate>
+        <svg id="room-svg" viewBox="0 0 320 210" role="img" aria-label="Plano de la cocina con las medidas actuales"></svg>
+        <div id="m-fields" class="m-grid"></div>
+        <p class="m-help">La forma es una L: pared larga arriba, pared izquierda, pared de la puerta abajo y un quiebro junto a la nevera. Si la pared de la puerta mide lo mismo que la larga, la cocina es rectangular. Pon 0 en la ventana fija si no tienes.</p>
+        <div class="share">
+          <button class="btn small" type="submit" id="m-apply">Aplicar medidas</button>
+          <button class="btn small" type="button" id="m-reset">Volver a las originales</button>
+        </div>
+        <p id="m-msg" class="m-msg" aria-live="polite"></p>
+      </form>
+    </details>
 
     <div class="group">
       <div class="label">Distribución</div>
@@ -101,7 +115,7 @@
     </div>
 
     <div class="group">
-      <div class="label">Supuestos del croquis</div>
+      <div class="label">Supuestos del croquis original</div>
       <ul class="notes">
         <li><b>Muro de la balconera:</b> dibujado 1,73 m, pero 2,64 − 0,95 da 1,69 m. El modelo usa 1,69 m para respetar el hueco de 95 cm de la nevera. Conviene volver a medir.</li>
         <li><b>Puerta de entrada:</b> hoja de 80 cm a 10 cm de la esquina, bisagras en el lado de la pared izquierda, abre hacia dentro.</li>
@@ -113,7 +127,7 @@
 </div>
 
 <script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+{"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}
 </script>
 <script type="module" src="js/main.js"></script>
 </body>

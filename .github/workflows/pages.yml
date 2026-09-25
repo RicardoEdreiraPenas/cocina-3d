@@ -54,7 +54,7 @@ jobs:
       - name: Preparar la web
         run: |
           mkdir -p _site
-          cp -r index.html favicon.svg css js docs dist _site/
+          cp -r index.html favicon.svg css js vendor docs dist _site/
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5

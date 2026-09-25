@@ -1,6 +1,8 @@
 /*
  * Texturas procedurales (dibujadas en <canvas>, sin imágenes externas).
- * Cada textura devuelve { map, bump? } y una miniatura para el panel.
+ * Cada textura devuelve { map, bump?, canvas } y una miniatura para el panel.
+ * Se generan bajo demanda: solo se dibujan cuando algo las usa por primera vez,
+ * y warmUp() prepara el resto en ratos libres para las miniaturas del panel.
  */
 
 function prng(seed) {
@@ -9,9 +11,9 @@ function prng(seed) {
 
 export function createTextures(THREE, renderer) {
   const aniso = renderer.capabilities.getMaxAnisotropy();
-  const out = {}, thumbs = {};
+  const out = {}, thumbs = {}, cache = {}, pending = [];
 
-  function make(name, w, h, drawColor, drawHeight, seed = 1) {
+  function build(name, w, h, drawColor, drawHeight, seed) {
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     let rnd = prng(seed); drawColor(c.getContext('2d'), w, h, rnd);
     const map = new THREE.CanvasTexture(c);
@@ -24,10 +26,23 @@ export function createTextures(THREE, renderer) {
       t.bump = bump;
     }
     const s = document.createElement('canvas'); s.width = s.height = 96;
-    s.getContext('2d').drawImage(c, 0, 0, Math.min(w, h * 1) * 0.5, Math.min(h, w) * 0.5, 0, 0, 96, 96);
+    s.getContext('2d').drawImage(c, 0, 0, Math.min(w, h) * 0.5, Math.min(h, w) * 0.5, 0, 0, 96, 96);
     thumbs[name] = s.toDataURL('image/jpeg', 0.8);
-    out[name] = t;
     return t;
+  }
+  function make(name, w, h, drawColor, drawHeight, seed = 1) {
+    pending.push(name);
+    Object.defineProperty(out, name, { enumerable: true, get: () => cache[name] || (cache[name] = build(name, w, h, drawColor, drawHeight, seed)) });
+  }
+  // Genera las texturas que falten, una por hueco libre del navegador, y avisa al terminar
+  function warmUp(onDone) {
+    const idle = window.requestIdleCallback || (fn => setTimeout(fn, 30));
+    const next = () => {
+      const name = pending.find(n => !cache[n]);
+      if (!name) { onDone && onDone(); return; }
+      void out[name]; idle(next);
+    };
+    idle(next);
   }
   const noise = (g, w, h, rnd, n, cols, size = 3) => {
     for (let i = 0; i < n; i++) { g.fillStyle = cols[(rnd() * cols.length) | 0].replace('A', (rnd() * 0.08).toFixed(3)); const s = 1 + rnd() * size; g.fillRect(rnd() * w, rnd() * h, s, s); }
@@ -187,5 +202,5 @@ export function createTextures(THREE, renderer) {
     for (let i = 0; i < 1200; i++) { const v = rnd() > .5 ? 255 : 110; g.fillStyle = `rgba(${v},${v},${v},${rnd() * .05})`; g.fillRect(0, rnd() * h, w, 1); }
   }, null, 121);
 
-  return { tex: out, thumbs };
+  return { tex: out, thumbs, warmUp };
 }
