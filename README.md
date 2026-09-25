@@ -11,7 +11,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 ## Qué hace
 
 - Tiene tres distribuciones sobre la misma planta. En L, lineal con columna de lavado y otra que llamo "aguas al patio", que junta fregadero, lavavajillas, lavadora y secadora encima de las tomas de agua.
-- La nevera americana (una LG side-by-side de 91,3 × 73,5 × 179 cm) se puede poner en tres sitios. Empotrada entre la despensa y la torre de hornos, en el hueco del quiebro o junto a la entrada.
+- La nevera americana (una LG side-by-side de 91,3 × 73,5 × 179 cm) se puede poner en dos sitios. Empotrada entre la despensa y la torre de hornos, o en el hueco del quiebro.
 - Para los acabados hay 4 opciones actuales en cada categoría y 4 estilos combinados que se aplican con un clic.
 
   | Categoría | Opciones |

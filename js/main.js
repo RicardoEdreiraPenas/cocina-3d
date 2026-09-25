@@ -793,13 +793,13 @@ function setQuality() {
 }
 
 /* ───────── Enlace compartible: #C.pared.012301 (distribución · nevera · acabados) ───────── */
-const CATS = Object.keys(CATALOG), FRIDGE_POS = ['pared', 'hueco', 'entrada'];
+const CATS = Object.keys(CATALOG), FRIDGE_POS = ['pared', 'hueco'];
 function saveHash() {
   const code = CATS.map(c => Math.max(0, CATALOG[c].options.findIndex(o => o.id === state.fin[c]))).join('');
   try { history.replaceState(null, '', '#' + [state.layout, state.fridgePos, code].join('.')); } catch { }
 }
 function loadHash(h) {
-  const m = /^([ABC])\.(pared|hueco|entrada)\.([0-3]{6})$/.exec(h);
+  const m = /^([ABC])\.(pared|hueco)\.([0-3]{6})$/.exec(h);
   if (!m) return false;
   state.layout = m[1]; state.fridgePos = m[2];
   CATS.forEach((c, i) => { state.fin[c] = CATALOG[c].options[+m[3][i]].id; });
