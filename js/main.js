@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { ROOM, DOOR, WINDOW, FRIDGE, DIM_LABELS, CATALOG, PRESETS, DEFAULT_DESIGN } from './config.js';
 import { createTextures } from './textures.js';
+import { panelInfo } from './info.js';
 
 /* ───────── Medidas (ver js/config.js) ───────── */
 const { W, D, NX, NZ, H, T } = ROOM;
@@ -293,8 +294,7 @@ const fridge = new THREE.Group(); scene.add(fridge);
 })();
 anim.push({ obj: doorPivot.rotation, key: 'y', closed: 0, open: 1.5 }, { obj: patioDoor.rotation, key: 'y', closed: 0, open: -1.45 });
 
-// Posición de la nevera: 'hueco' (nicho de 95 cm del quiebro) o 'entrada' (pared izquierda, solo opción C)
-const FZ_ENT = 0.66, FX_ENT = 0.05;
+// Posición de la nevera en la opción C: 'pared' (empotrada) o 'hueco' (nicho de 95 cm). En A y B va siempre en el hueco.
 // Pared de 3,42: despensa 80 · nevera en hueco de 96 · torre horno 60 (x 1,00 → 3,40)
 const FP_HX0 = 1.82, FP_HX1 = 2.78, FPX1 = (FP_HX0 + FP_HX1) / 2 + FR.w / 2, FPZ = D - FR.back - FR.d;
 const fridgeMode = () => state.layout === 'C' ? state.fridgePos : 'hueco';
@@ -302,7 +302,6 @@ function placeFridge() {
   const b = fridge.userData.body;
   const m = fridgeMode();
   if (m === 'hueco') place(b, FRX1, FRZ0, -Math.PI / 2);
-  else if (m === 'entrada') place(b, FX_ENT, FZ_ENT + FR.w, Math.PI / 2);
   else place(b, FPX1, D - FR.back, Math.PI);           // pared de 3,42 mirando a la encimera
   fridge.userData.fgAnim.open = m === 'pared' ? 1.9 : 1.57;
 }
@@ -314,14 +313,6 @@ function baseModule(g, x0, w, type, mats, animList) {
   if (type !== 'dw') B(g, x0, x1, Y_PL, Y_CT, 0, Z_CAR, M.carcass);
   B(g, x0 + 0.002, x1 - 0.002, 0, Y_PL, 0, Z_FR - 0.06, mats.plinth);
   const heights = { drawers3: [0.18, 0.27, 0.27], drawers2: [0.36, 0.36], doors2: [0.72], door1: [0.72], blind: [0.72] }[type];
-  if (type === 'oven') {
-    B(g, x0, x1, Y_PL, Y_CT, 0, Z_CAR, M.carcass);
-    B(g, x0 + gap, x1 - gap, Y_PL + gap, 0.25, Z_CAR, Z_FR, mats.low);
-    B(g, x0 + gap, x1 - gap, 0.254, Y_CT - gap, Z_CAR, Z_FR, M.blackGlass);
-    B(g, x0 + 0.02, x1 - 0.02, 0.76, Y_CT - 0.01, Z_FR, Z_FR + 0.004, M.steel);
-    B(g, x0 + 0.1, x1 - 0.1, 0.72, 0.735, Z_FR + 0.02, Z_FR + 0.035, M.chrome);
-    return;
-  }
   if (type === 'dw') {
     B(g, x0 + 0.005, x1 - 0.005, Y_PL, Y_CT - 0.005, 0, Z_CAR, M.steel);
     B(g, x0 + 0.03, x1 - 0.03, 0.45, 0.46, 0.02, Z_CAR + 0.001, M.steelDark);
@@ -489,8 +480,8 @@ function buildLayout() {
   } else if (state.layout === 'C') {
     // Tomas de agua y desagüe en la mitad derecha de la pared de 4,78 (x ≥ 2,39).
     // Orden: rincón · placa · cajonera · fregadero 90 · lavavajillas · lavadora · secadora (al final, junto a la ventana)
-    const ent = fridgeMode() === 'entrada', par = fridgeMode() === 'pared';
-    const mods = [[0, 0.80, par ? 'drawers3' : 'blind'], [0.80, 0.60, ent ? 'oven' : 'drawers2'], [1.40, 0.60, 'drawers3'], [2.00, 0.90, 'doors2'], [2.90, 0.60, 'dw']];
+    const par = fridgeMode() === 'pared';
+    const mods = [[0, 0.80, par ? 'drawers3' : 'blind'], [0.80, 0.60, 'drawers2'], [1.40, 0.60, 'drawers3'], [2.00, 0.90, 'doors2'], [2.90, 0.60, 'dw']];
     mods.forEach(([x, w, t]) => baseModule(top, x, w, t, mats, layoutAnim));
     top.add(place(washer('washer', layoutAnim), 3.5015, 0.02));
     top.add(place(washer('dryer', layoutAnim), 4.1015, 0.02));
@@ -503,7 +494,7 @@ function buildLayout() {
     [0.5, 1.7, 2.45, 3.3, 3.9].forEach(x => addLed(x, 0.3));
     if (par) {
       buildTallWall(g, mats);
-    } else if (!ent) {
+    } else {
       // Pared izquierda: columna horno + microondas (junto a la placa) y despensa (junto a la entrada)
       const cols = new THREE.Group(); g.add(cols);
       B(cols, 0, 1.20, Y_PL, 2.17, 0, Z_CAR, M.carcass); B(cols, 0.002, 1.198, 0, Y_PL, 0, Z_FR - 0.06, mats.plinth);
@@ -517,13 +508,6 @@ function buildLayout() {
       place(cols, 0, 1.83, Math.PI / 2);
       tag(g, 'Horno + micro', 'columna 60', 0.3, 2.3, 0.93);
       tag(g, 'Despensa', '60 × 217', 0.3, 2.3, 1.53);
-    } else {
-      // El hueco de 95 cm pasa a ser una despensa de 90 cm (frente hacia la cocina)
-      const pan = new THREE.Group(); g.add(pan);
-      B(pan, 0, 0.91, Y_PL, 2.17, 0, Z_CAR, M.carcass); B(pan, 0.002, 0.908, 0, Y_PL, 0, Z_FR - 0.06, mats.plinth);
-      [[Y_PL, 1.30, mats.low], [1.30, 2.17, mats.high]].forEach(([y0, y1, m]) => { B(pan, 0.004, 0.453, y0 + 0.004, y1 - 0.004, Z_CAR, Z_FR, m); B(pan, 0.457, 0.906, y0 + 0.004, y1 - 0.004, Z_CAR, Z_FR, m); });
-      place(pan, NX - 0.02, NZ + 0.02, -Math.PI / 2);
-      tag(g, 'Despensa 90', 'en el hueco de 95', NX - 0.3, 2.35, NZ + 0.475);
     }
     fruitBowl(g, 0.35, 0.33); board(g, 1.7, 0.3); pot(g, 0.98, 0.2);
     plant(g, 4.62, 0.26, Y_TOP, 0.5);
@@ -531,7 +515,7 @@ function buildLayout() {
     tag(g, 'Lavavajillas 60', '59,8 × 55 × 82', 3.20, 1.02, 0.55);
     tag(g, 'Lavadora 60', '59,7 × 56,5 × 85', 3.80, 0.72, 1.0);
     tag(g, 'Secadora 60', '59,7 × 60 × 85', 4.40, 1.02, 0.55);
-    tag(g, ent ? 'Placa + horno debajo' : 'Placa + campana', '60 cm', 1.10, 1.62, 0.3);
+    tag(g, 'Placa + campana', '60 cm', 1.10, 1.62, 0.3);
     document.getElementById('st-enc').textContent = '4,78 m';
   } else {
     // Frente largo completo: despensa alta · cajonera · fregadero · lavavajillas · placa · cajoneras hasta la ventana
@@ -598,7 +582,6 @@ function buildLayout() {
     tag(g, 'Muebles bajos + altos', '110 cm · paso 1,40 m', 1.55, 1.62, D - 0.3);
   }
   if (fridgeMode() === 'hueco') tag(g, 'Nevera LG americana', '91,3 × 73,5 × 179', FRX0 + FR.d / 2, FR.h + 0.18, FRZ0 + FR.w / 2);
-  else if (fridgeMode() === 'entrada') tag(g, 'Nevera LG americana', '91,3 × 73,5 × 179', FX_ENT + FR.d / 2, FR.h + 0.18, FZ_ENT + FR.w / 2);
   else tag(g, 'Nevera LG empotrada', '91,3 × 73,5 × 179', (FP_HX0 + FP_HX1) / 2, 1.62, FPZ + 0.2);
   placeFridge();
   document.getElementById('fridge-group').hidden = state.layout !== 'C';
@@ -650,49 +633,11 @@ const islandDim = dims.children.slice(-2);
 dim([2.15, y0, 0.62], [2.15, y0, FPZ], 'paso 1,24', true);
 const wallDim = dims.children.slice(-2);
 
-/* ───────── Info del panel ───────── */
+/* ───────── Info del panel (textos en js/info.js) ───────── */
 function renderInfo() {
-  const L = state.layout, ent = fridgeMode() === 'entrada';
-  const par = fridgeMode() === 'pared';
-  const pick = o => (L === 'C' && ent && 'Ce' in o) ? o.Ce : (L === 'C' && par && 'Cp' in o) ? o.Cp : o[L];
-  const apps = [
-    ['Nevera LG americana', '91,3 × 73,5 × 179', par ? 'Dos puertas side-by-side (serie GSLV). En la pared de 3,42 mirando a la encimera, entre la despensa y la torre de hornos, con 2,3 cm a cada lado, 5 cm arriba y 5 cm detrás.' : ent ? 'Dos puertas side-by-side (serie GSLV). En la pared izquierda, junto a la entrada, con 5 cm de ventilación detrás. Mejor un modelo sin toma de agua (dispensador con depósito).' : 'Dos puertas side-by-side (serie GSLV, las habituales en España). Va en el hueco de 95 cm junto al quiebro, con 5 cm de ventilación detrás. Mejor un modelo sin toma de agua (dispensador con depósito).'],
-    ['Fregadero', '80 cm', pick({ A: 'Hacia la mitad izquierda de la pared larga (centro a 1,60 m).', B: 'Hacia la mitad izquierda de la pared larga (centro a 1,60 m).', C: 'De 90 cm, con el desagüe a 2,45 m: justo al empezar la zona de tomas.' })],
-    ['Lavavajillas integrable', '60 cm', pick({ A: 'Junto al fregadero. Frente panelado a juego.', B: 'Junto al fregadero. Frente panelado a juego.', C: 'Entre el fregadero y la lavadora, en la zona de tomas.' })],
-    ['Lavadora', '59,7 × 56,5 × 85', pick({ A: 'Bajo encimera en el brazo izquierdo de la L.', B: 'Abajo en la columna de la pared izquierda, junto a la entrada.', C: 'Bajo encimera, la penúltima de la pared larga, sobre las tomas.' })],
-    ['Secadora bomba de calor', '59,7 × 60 × 85', pick({ A: 'Al lado de la lavadora, bajo encimera. Elige una de 60 cm de fondo como máximo.', B: 'Encima de la lavadora con kit de unión. Admite fondos de hasta 65 cm.', C: 'Al final del mueble, junto a la ventana. El condensado va al desagüe de la lavadora o a su depósito.' })],
-    ['Placa de inducción + campana', '60 cm', pick({ A: 'Entre fregadero y ventana, con 1,28 m de encimera libre hasta la ventana fija.', B: 'Entre lavavajillas y nevera, con 1,88 m de encimera libre hasta la ventana.', C: 'En la mitad izquierda, con 60 cm de encimera libre hasta el fregadero y la columna de horno y microondas al lado.', Ce: 'En la mitad izquierda, con el horno debajo. La puerta derecha de la nevera barre el frente de la placa al abrirse.', Cp: 'En la mitad izquierda, con 60 cm de encimera libre hasta el fregadero. El horno va en la torre junto a la nevera.' })],
-  ];
+  const { apps, checks } = panelInfo(state.layout, state.fridgePos);
   document.getElementById('apps').innerHTML = apps.map(([n, d, w]) => `<div class="row"><span class="n">${n}</span><span class="d">${d}</span><span class="w">${w}</span></div>`).join('');
-  const checks = [
-    pick({ A: ['warn', 'Obra', 'Tomas de agua', 'Fregadero, lavavajillas y lavadora quedan lejos de las tomas: hay que llevar agua y desagüe de 1 a 4 m, con pendiente en el desagüe.'],
-           B: ['warn', 'Obra', 'Tomas de agua', 'Fregadero y lavavajillas quedan a 1–2 m de las tomas y la columna de lavado a unos 4 m: hay que prolongar agua y desagüe.'],
-           C: ['ok', 'Sin obra', 'Tomas de agua', 'Fregadero, lavavajillas, lavadora y secadora van seguidos en la mitad derecha de la pared larga, encima de las tomas.'] }),
-    pick({ A: null, B: null,
-           C: ['ok', 'Bien', 'Dónde va la nevera', 'En el hueco de 95 cm queda enfrente del fregadero (1,9 m) y fuera del paso, pero la puerta pegada a la pared solo abre 90° y la torre de hornos ocupa la pared izquierda.'],
-           Cp: ['ok', 'Mejor', 'Dónde va la nevera', 'De frente a la encimera y a 1,24 m de ella: abres, giras y estás en el fregadero. Queda empotrada entre despensa y torre de hornos, y como sobresale 16 cm de los armarios sus dos puertas abren más de 90°.'],
-           Ce: ['warn', 'Peor', 'Dónde va la nevera', 'Junto a la entrada va bien para descargar la compra y deja el hueco para una despensa de 90, pero queda a 0,9 m de la placa y su puerta derecha barre la zona de cocinar.'] }),
-    ent ? null : ['ok', 'Justo', 'Hueco de la nevera', '95 cm de hueco para 91,3 cm de nevera: quedan 1,9 cm por lado. La puerta pegada a la pared abre a 90°; comprueba en el manual del modelo que basta para sacar los cajones.'],
-    (L === 'C' && par) ? ['warn', 'Revisar', 'Ventilación de la nevera', 'Es un modelo de libre instalación metido entre muebles: deja 2,3 cm por lado, 5 cm arriba y 5 cm detrás y pon rejilla en el zócalo y en el mueble alto. Confírmalo en el manual del modelo LG.'] : null,
-    ['warn', 'Revisar', 'Calentador de gas', 'El mueble de 45 cm que lo tapa va abierto por abajo, con rejillas arriba y abajo en la puerta y la chimenea saliendo libre por arriba. Deja las distancias que pide el manual del Junkers y que lo valide un instalador de gas autorizado.'],
-    ['warn', 'Medir', 'Meter la nevera por la puerta', 'Una hoja de 80 cm deja unos 72–76 cm de paso y la nevera tiene 73,5 cm de fondo. Suele entrar de lado quitando sus puertas o la hoja de la puerta.'],
-    L === 'C' ? null : ['ok', 'Bien', 'Muebles de enfrente', ent ? '110 cm de bajos y altos entre la puerta y la despensa, con 1,40 m de paso hasta la encimera. Dejan 70 cm para abrir las puertas de la despensa.' : '110 cm de bajos y altos entre la puerta y la nevera, con 1,40 m de paso hasta la encimera. Terminan 50 cm antes de la nevera para que su puerta del lado de la pared abra a 90°.'],
-    (L === 'C' && par) ? ['ok', 'Bien', 'Paso principal', '1,24 m entre la encimera y el frente de la nevera y 1,40 m hasta los armarios. Con las puertas de la nevera abiertas siguen quedando unos 75 cm para pasar.'] :
-    (L === 'C' && !ent) ? ['ok', 'Bien', 'Paso principal', '1,09 m entre la encimera y el costado de la nevera; el resto de la cocina queda despejado.'] :
-    ['ok', 'Bien', 'Paso principal', ent ? '1,40 m entre la encimera y los muebles de enfrente. Lo recomendable para una persona cocinando es 0,90–1,20 m.' : '1,09 m entre la encimera y el costado de la nevera. Lo recomendable para una persona cocinando es 0,90–1,20 m.'],
-    ['ok', 'Bien', 'Salida al patio', 'La encimera llega hasta la ventana fija. La puerta del patio (≈85 cm) abre hacia dentro sobre 1,07 m libres, sin tocar ningún mueble.'],
-    pick({ A: ['warn', 'Justo', 'Puerta de entrada y secadora', 'La hoja abierta a 90° queda a unos 3 cm del costado de la secadora. Conviene un tope de puerta.'],
-           B: ['ok', 'Bien', 'Puerta de entrada y columna', 'La columna de lavado acaba 57 cm antes del barrido de la puerta.'],
-           C: ['warn', 'Justo', 'Puerta de entrada y despensa', 'La hoja abierta a 90° queda a unos 3 cm del costado de la despensa. Conviene un tope de puerta.'],
-           Cp: ['ok', 'Bien', 'Puerta de entrada', 'La pared izquierda queda libre: la hoja abre sin topes y la despensa arranca justo después del marco.'],
-           Ce: ['ok', 'Bien', 'Puerta de entrada y nevera', 'La nevera acaba 29 cm antes del barrido de la puerta de entrada.'] }),
-    pick({ A: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,7 m de recorrido (lo ideal es 4–7 m).'],
-           B: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,3 m de recorrido (lo ideal es 4–7 m).'],
-           C: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 5,6 m de recorrido (lo ideal es 4–7 m).'],
-           Cp: ['ok', 'Bien', 'Triángulo de trabajo', 'Nevera, fregadero y placa suman unos 4,9 m (lo ideal es 4–7 m), con la nevera a 1,5 m del fregadero.'],
-           Ce: ['warn', 'Justo', 'Triángulo de trabajo', 'Suma unos 4,1 m, pero la nevera y la placa quedan a solo 0,9 m (lo aconsejable es más de 1,2 m).'] }),
-  ];
-  document.getElementById('checks').innerHTML = checks.filter(Boolean).map(([s, l, t, x]) => `<div class="check"><span class="pill ${s}">${l}</span><span class="t">${t}</span><span class="x">${x}</span></div>`).join('');
+  document.getElementById('checks').innerHTML = checks.map(([s, l, t, x]) => `<div class="check"><span class="pill ${s}">${l}</span><span class="t">${t}</span><span class="x">${x}</span></div>`).join('');
 }
 
 /* ───────── Día / noche ───────── */
@@ -722,7 +667,6 @@ let tween = null;
 function goView(name, instant = false) {
   let v = VIEWS[name];
   if (name === 'nevera' && fridgeMode() === 'pared') v = { p: [0.75, 1.7, 0.8], t: [2.4, 0.95, 2.3], f: 62 };
-  if (name === 'nevera' && fridgeMode() === 'entrada') v = { p: [2.3, 1.6, 1.7], t: [0.4, 1.0, 1.1], f: 60 };
   document.querySelectorAll('.vbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === name));
   const to = { p: new THREE.Vector3(...v.p), t: new THREE.Vector3(...v.t), f: v.f };
   if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { camera.position.copy(to.p); controls.target.copy(to.t); camera.fov = to.f; camera.updateProjectionMatrix(); return; }
@@ -759,6 +703,23 @@ $('copy-link').onclick = async () => {
   try { await navigator.clipboard.writeText(url); msg.textContent = 'Enlace copiado'; }
   catch { msg.textContent = url; }
   msg.hidden = false; clearTimeout(msg._t); msg._t = setTimeout(() => { msg.hidden = true; }, 4000);
+};
+// Guardar la vista actual como PNG en alta calidad (hasta ~2400 px de ancho)
+$('save-img').onclick = () => {
+  const msg = $('copy-msg'), w = stage.clientWidth, h = stage.clientHeight, hq = state.hq;
+  const pr = Math.min(3, Math.max(1, 2400 / w));
+  renderer.setPixelRatio(pr); composer.setPixelRatio(pr); composer.setSize(w, h);
+  state.hq = true; frame(performance.now()); state.hq = hq;
+  renderer.domElement.toBlob(blob => {
+    setQuality();
+    if (!blob) { msg.textContent = 'No se pudo generar la imagen'; msg.hidden = false; return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `cocina-3d-${(location.hash.slice(1) || 'diseno').replace(/[^\w.-]/g, '')}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    msg.textContent = 'Imagen guardada'; msg.hidden = false; clearTimeout(msg._t); msg._t = setTimeout(() => { msg.hidden = true; }, 4000);
+  }, 'image/png');
 };
 controls.addEventListener('start', () => { tween = null; });
 

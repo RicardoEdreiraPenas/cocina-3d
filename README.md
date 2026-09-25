@@ -1,5 +1,7 @@
 # Cocina 3D
 
+[![Probar y publicar](https://github.com/RicardoEdreiraPenas/cocina-3d/actions/workflows/pages.yml/badge.svg)](https://github.com/RicardoEdreiraPenas/cocina-3d/actions/workflows/pages.yml)
+
 Hice este configurador para diseñar la cocina de mi casa en Albuixech. Es una cocina de 4,78 × 2,64 m con salida al patio, y quería ver cómo quedaba antes de encargar nada. Funciona en el navegador y parte del croquis que dibujé a mano con las medidas reales. Con él pruebo distribuciones, coloco electrodomésticos de tamaño estándar, cambio acabados y compruebo que todo cabe.
 
 Lo comparto por si a alguien le sirve para diseñar la suya.
@@ -28,6 +30,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 - Comprueba medidas que me importaban: pasos libres, apertura de puertas, triángulo de trabajo, distancia a las tomas de agua y ventilación de la nevera y del calentador de gas.
 - Hay cinco vistas (desde la puerta, desde el patio, nevera, maqueta y planta). También muestra las cotas del croquis y las puertas se abren con animación.
 - El diseño se guarda en la URL, así que puedes pasar el enlace a quien quieras. Por ejemplo `#C.pared.000000`.
+- Con «Guardar imagen» te descargas la vista que tengas en pantalla en PNG, a unos 2400 px de ancho. Es lo que uso para enseñárselo al carpintero.
 
 | Salvia | Mediterráneo | Noche |
 |---|---|---|
@@ -73,16 +76,32 @@ El repositorio ya trae el flujo [`.github/workflows/pages.yml`](.github/workflow
 2. En **Build and deployment → Source**, elige **GitHub Actions**.
 3. Haz `push` a `main`. En la pestaña **Actions** verás el despliegue y, cuando termine, la URL pública.
 
+## Pruebas
+
+Antes de publicar, GitHub Actions abre la web en un Chromium sin ventana y comprueba que carga sin errores, que la escena se dibuja en todas las distribuciones y estilos, que el panel sale completo y que «Guardar imagen» funciona. Si algo falla, no se publica.
+
+Para lanzar la misma prueba en tu ordenador:
+
+```bash
+npm install
+npx playwright install chromium
+python3 -m http.server 8000 &
+npm test
+```
+
 ## Estructura
 
 ```
 index.html              página y panel
 css/styles.css          estilos
 js/config.js            medidas, electrodomésticos, catálogo de acabados
+js/info.js              textos del panel: electrodomésticos y comprobaciones
 js/textures.js          texturas procedurales
 js/main.js              escena 3D, distribuciones, luces, interfaz
 scripts/build_single.py genera dist/cocina-3d.html
-docs/                   capturas
+tests/smoke.mjs         prueba en navegador que se lanza antes de publicar
+docs/                   capturas e imagen para compartir el enlace
+favicon.svg             icono de la pestaña
 ```
 
 ## Tecnología

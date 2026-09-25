@@ -9,7 +9,7 @@ Genera un único HTML autocontenido (CSS y JS en línea) en dist/cocina-3d.html.
 import pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-MODULES = ['js/config.js', 'js/textures.js', 'js/main.js']   # orden de dependencias
+MODULES = ['js/config.js', 'js/textures.js', 'js/info.js', 'js/main.js']   # orden de dependencias
 
 
 def bundle_js():
