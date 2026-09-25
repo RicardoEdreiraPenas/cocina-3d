@@ -38,8 +38,24 @@ export const T = 0.10;                       // grosor de muro
 export const WATER = { from: 0.5 };          // las tomas empiezan a mitad de la pared larga (fracción de W)
 export const BOILER = { enabled: true, width: 0.45, label: 'Junkers de gas' };  // calentador tapado junto a la ventana
 
-// Nevera LG side-by-side (serie GSLV): 91,3 × 73,5 × 179 cm, 5 cm de ventilación detrás
-export const FRIDGE = { w: 0.913, d: 0.735, h: 1.79, back: 0.05 };
+// Electrodomésticos de partida (metros). También se cambian desde «Mis medidas».
+// Nevera LG side-by-side (serie GSLV): 91,3 × 73,5 × 179 cm, con 5 cm de ventilación detrás.
+export const DEFAULT_APPLIANCES = {
+  fridgeW: 0.913, fridgeD: 0.735, fridgeH: 1.79,
+  dwW: 0.60,                                        // lavavajillas integrable (45 o 60)
+  washerW: 0.597, washerD: 0.565, washerH: 0.85,
+  dryerW: 0.597, dryerD: 0.60, dryerH: 0.85,
+  hobW: 0.60,                                       // placa (60, 70, 80 o 90)
+};
+export const APPLIANCE_LIMITS = {
+  fridgeW: [0.55, 1.10], fridgeD: [0.55, 0.80], fridgeH: [1.40, 2.10],
+  dwW: [0.45, 0.60],
+  washerW: [0.40, 0.70], washerD: [0.40, 0.70], washerH: [0.70, 0.95],
+  dryerW: [0.40, 0.70], dryerD: [0.40, 0.70], dryerH: [0.70, 0.95],
+  hobW: [0.30, 0.90],
+};
+export const FRIDGE_BACK = 0.05;   // ventilación detrás de la nevera
+export const UNDER_COUNTER = { h: 0.855, d: 0.62 };   // hueco bajo encimera: alto útil y fondo de encimera
 
 /*
  * Catálogo de acabados: 4 opciones por categoría, tendencias 2025–2026.

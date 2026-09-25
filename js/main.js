@@ -9,13 +9,16 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { DEFAULT_ROOM, ROOM_LIMITS, T, WATER, BOILER, FRIDGE, CATALOG, PRESETS, DEFAULT_DESIGN } from './config.js';
+import { DEFAULT_ROOM, ROOM_LIMITS, T, WATER, BOILER, DEFAULT_APPLIANCES, APPLIANCE_LIMITS, FRIDGE_BACK, UNDER_COUNTER, CATALOG, PRESETS, DEFAULT_DESIGN } from './config.js';
 import { createTextures } from './textures.js';
 import { panelInfo } from './info.js';
 
-const FR = FRIDGE;
+const FR = { w: DEFAULT_APPLIANCES.fridgeW, d: DEFAULT_APPLIANCES.fridgeD, h: DEFAULT_APPLIANCES.fridgeH, back: FRIDGE_BACK };
 const fmt = (v, d = 2) => v.toFixed(d).replace('.', ',');
 const cm = v => Math.round(v * 100);
+// centímetros con un decimal solo si hace falta: 0.597 → "59,7", 0.85 → "85"
+const c1 = v => { const x = Math.round(v * 1000) / 10; return (Number.isInteger(x) ? String(x) : x.toFixed(1)).replace('.', ','); };
+const dimsTxt = (w, d, h) => `${c1(w)} × ${c1(d)} × ${c1(h)}`;
 
 /* ───────── Renderer ───────── */
 const stage = document.getElementById('stage');
@@ -126,7 +129,7 @@ const M = {
 
 /* ───────── Estado ───────── */
 const state = {
-  layout: DEFAULT_DESIGN.layout, fridgePos: DEFAULT_DESIGN.fridgePos, fin: { ...DEFAULT_DESIGN.fin }, room: { ...DEFAULT_ROOM },
+  layout: DEFAULT_DESIGN.layout, fridgePos: DEFAULT_DESIGN.fridgePos, fin: { ...DEFAULT_DESIGN.fin }, room: { ...DEFAULT_ROOM }, appl: { ...DEFAULT_APPLIANCES },
   water: true, night: false, open: false, dims: true, tags: window.innerWidth > 860, rot: false, hq: HQ_DEFAULT,
 };
 
@@ -375,36 +378,40 @@ function dim(parent, a, b, text, inner = false) {
   const lab = new CSS2DObject(el); lab.position.copy(A).add(Bv).multiplyScalar(0.5); parent.add(lab);
 }
 
-/* ───────── Nevera LG side-by-side ───────── */
-const fridgeAnim = [];
+/* ───────── Nevera americana side-by-side (medidas en state.appl) ───────── */
+let fridgeAnim = [];
 const fridge = new THREE.Group(); scene.add(fridge);
-(() => {
-  const g = new THREE.Group();
-  const bodyD = FR.d - 0.095;
+function syncFR() { const a = state.appl; FR.w = a.fridgeW; FR.d = a.fridgeD; FR.h = a.fridgeH; }
+function buildFridge() {
+  if (fridge.userData.body) disposeGroup(fridge.userData.body);
+  fridgeAnim = [];
+  const g = new THREE.Group(), k = FR.h / 1.79;
+  const bodyD = FR.d - 0.095, fzW = FR.w * 0.4655, fgW = FR.w - fzW - 0.003;
   RB(g, 0, FR.w, 0.03, FR.h, 0, bodyD, M.steelDark, 0.01);
   B(g, 0.02, FR.w - 0.02, 0, 0.09, bodyD - 0.02, bodyD + 0.005, M.dark);
   const inner = std('#f2f3f3', 0.4);
   B(g, 0.03, FR.w - 0.03, 0.12, FR.h - 0.04, bodyD - 0.02, bodyD + 0.001, inner, { cast: false });
-  for (let i = 0; i < 4; i++) B(g, 0.44, FR.w - 0.03, 0.45 + i * 0.3, 0.456 + i * 0.3, bodyD - 0.5, bodyD, M.glass);
-  B(g, 0.425, 0.435, 0.12, FR.h - 0.04, bodyD - 0.55, bodyD + 0.001, inner);
+  for (let i = 0; i < 4; i++) B(g, fzW + 0.015, FR.w - 0.03, (0.45 + i * 0.3) * k, (0.456 + i * 0.3) * k, bodyD - 0.5, bodyD, M.glass);
+  B(g, fzW, fzW + 0.01, 0.12, FR.h - 0.04, bodyD - 0.55, bodyD + 0.001, inner);
   // Puertas con el pivote en la arista exterior delantera
   const mkDoor = (w, sign) => {
     const p = new THREE.Group(); const d = new THREE.Group(); p.add(d);
     const x0 = sign > 0 ? 0 : -w, x1 = sign > 0 ? w : 0;
     RB(d, x0, x1, 0.095, FR.h - 0.005, -0.095, 0, M.steel, 0.012);
     const hx = sign > 0 ? x1 - 0.035 : x0 + 0.02;
-    B(d, hx, hx + 0.015, 0.55, 1.5, -0.004, 0.003, M.dark);
+    B(d, hx, hx + 0.015, 0.55 * k, 1.5 * k, -0.004, 0.003, M.dark);
     return p;
   };
-  const fz = mkDoor(0.425, 1); fz.position.set(0, 0, FR.d); g.add(fz);
-  const fg = mkDoor(FR.w - 0.428, -1); fg.position.set(FR.w, 0, FR.d); g.add(fg);
-  B(fz, 0.08, 0.34, 0.98, 1.34, -0.01, 0.004, M.blackGlass); B(fz, 0.16, 0.26, 1.28, 1.31, 0.004, 0.006, M.display);
-  B(fz, 0.03, 0.40, 0.25, FR.h - 0.08, -0.12, -0.095, inner, { cast: false });
-  B(fg, -0.46, -0.03, 0.25, FR.h - 0.08, -0.12, -0.095, inner, { cast: false });
+  const fz = mkDoor(fzW, 1); fz.position.set(0, 0, FR.d); g.add(fz);
+  const fg = mkDoor(fgW, -1); fg.position.set(FR.w, 0, FR.d); g.add(fg);
+  const dw = Math.min(0.26, fzW - 0.12);
+  B(fz, 0.08, 0.08 + dw, 0.98 * k, 1.34 * k, -0.01, 0.004, M.blackGlass); B(fz, 0.08 + dw / 2 - 0.05, 0.08 + dw / 2 + 0.05, 1.28 * k, 1.31 * k, 0.004, 0.006, M.display);
+  B(fz, 0.03, fzW - 0.025, 0.25, FR.h - 0.08, -0.12, -0.095, inner, { cast: false });
+  B(fg, -fgW + 0.025, -0.03, 0.25, FR.h - 0.08, -0.12, -0.095, inner, { cast: false });
   const fgA = { obj: fg.rotation, key: 'y', closed: 0, open: 1.57 };
   fridgeAnim.push({ obj: fz.rotation, key: 'y', closed: 0, open: -1.9 }, fgA); fridge.userData.fgAnim = fgA;
   fridge.userData.body = g; fridge.add(g);
-})();
+}
 
 /* ───────── Módulos de cocina ───────── */
 const Z_CAR = 0.56, Z_FR = 0.58, Y_PL = 0.14, Y_CT = 0.86, Y_TOP = 0.90, TOPY = 2.17;
@@ -486,16 +493,18 @@ function sink(g, xc, zc) {
   cyl(g, 0.013, 0.06, M.chrome, xc, Y_TOP + 0.31, tz + 0.2);
   B(g, xc + 0.02, xc + 0.1, Y_TOP + 0.2, Y_TOP + 0.21, tz - 0.005, tz + 0.005, M.chrome);
 }
-function hob(g, xc, zc) { B(g, xc - 0.295, xc + 0.295, Y_TOP, Y_TOP + 0.006, zc - 0.26, zc + 0.26, M.hob); }
+function hob(g, xc, zc) { const h = state.appl.hobW / 2 - 0.005; B(g, xc - h, xc + h, Y_TOP, Y_TOP + 0.006, zc - 0.26, zc + 0.26, M.hob); }
 // Lavadora / secadora 60 cm (frente local +z)
 function washer(kind, animList) {
-  const g = new THREE.Group(), w = 0.597, d = kind === 'dryer' ? 0.60 : 0.565, h = 0.85;
+  const a = state.appl, g = new THREE.Group();
+  const w = kind === 'dryer' ? a.dryerW : a.washerW, d = kind === 'dryer' ? a.dryerD : a.washerD, h = kind === 'dryer' ? a.dryerH : a.washerH;
+  const ky = h / 0.85;
   RB(g, 0, w, 0, h, 0, d, M.white, 0.014);
-  B(g, 0.02, w - 0.02, 0.73, 0.735, d - 0.001, d + 0.002, M.applPlastic);
-  B(g, 0.03, kind === 'washer' ? 0.2 : 0.26, 0.755, 0.83, d, d + 0.006, M.applPlastic);
-  B(g, 0.3, 0.42, 0.775, 0.81, d, d + 0.004, M.display);
-  const dial = cyl(g, 0.032, 0.02, M.chrome, 0.51, 0.79, d + 0.01); dial.rotation.x = Math.PI / 2;
-  const cx = w / 2, cy = 0.42, R = 0.19;
+  B(g, 0.02, w - 0.02, h - 0.12, h - 0.115, d - 0.001, d + 0.002, M.applPlastic);
+  B(g, 0.03, Math.min(w * (kind === 'washer' ? 0.33 : 0.43), w - 0.3), h - 0.095, h - 0.02, d, d + 0.006, M.applPlastic);
+  B(g, w * 0.5, w * 0.7, h - 0.075, h - 0.04, d, d + 0.004, M.display);
+  const dial = cyl(g, 0.032, 0.02, M.chrome, w - 0.087, h - 0.06, d + 0.01); dial.rotation.x = Math.PI / 2;
+  const cx = w / 2, R = Math.min(0.19, w / 2 - 0.08, (h - 0.2) / 2), cy = Math.min(0.42 * ky, h - 0.14 - R);
   const p = new THREE.Group(); p.position.set(cx - R, cy, d + 0.01); g.add(p);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(R - 0.02, 0.028, 16, 48), kind === 'dryer' ? M.applPlastic : M.chrome);
   ring.position.set(R, 0, 0.012); ring.castShadow = true; p.add(ring);
@@ -560,7 +569,7 @@ function renderRun(g, items, mats, animList) {
   for (const it of items) {
     const c = it.x + it.w / 2;
     if (it.type === 'washer' || it.type === 'dryer') {
-      g.add(place(washer(it.type, animList), it.x + (it.w - 0.597) / 2, 0.02));
+      g.add(place(washer(it.type, animList), it.x + (it.w - (it.type === 'dryer' ? state.appl.dryerW : state.appl.washerW)) / 2, 0.02));
       B(g, it.x, it.x + it.w, Y_CT - 0.012, Y_CT, 0, 0.6, M.carcass, { cast: false });
     } else if (it.type === 'sink') baseModule(g, it.x, it.w, 'doors2', mats, animList);
     else if (it.type === 'hob') baseModule(g, it.x, it.w, 'drawers2', mats, animList);
@@ -611,7 +620,8 @@ function buildLayout() {
 
   // Pared de la puerta: sitio para el muro de armarios con la nevera (solo C empotrada)
   const twX0 = G.DOOR1 + 0.08, twX1 = NX - 0.02;
-  met.wallFits = wantPared ? (twX1 - twX0 >= 1.56) : undefined;
+  const housingW = FR.w + 0.047;
+  met.wallFits = wantPared ? (twX1 - twX0 >= 0.60 + housingW) : undefined; met.wallNeed = 0.60 + housingW;
   if (wantPared && !met.wallFits) met.warnings.push(['wallNoFit', twX1 - twX0]);
   MET = met;                                         // fridgeMode() lo necesita ya
   const mode = fridgeMode();
@@ -619,14 +629,17 @@ function buildLayout() {
   // Pared larga
   let runA = 0, left = [], right = [];
   const I = (id, w, type, extra = {}) => ({ id, w, type, ...extra });
+  const A = state.appl;
+  const modW = w => Math.max(0.60, Math.ceil((w + 0.003) * 100) / 100);    // hueco de módulo para un aparato
+  const wmW = modW(A.washerW), dmW = modW(A.dryerW), dwW = A.dwW, hbW = Math.max(0.60, Math.ceil(A.hobW * 100) / 100);
   if (L === 'A') {
-    left = [I('corner', 0.60, 'blind'), I('d1', 0.60, 'drawers3'), I('sink', 0.80, 'sink'), I('dw', 0.60, 'dw', { prio: 2 }), I('spice', 0.30, 'door1', { prio: 3 }), I('hob', 0.60, 'hob')];
+    left = [I('corner', 0.60, 'blind'), I('d1', 0.60, 'drawers3'), I('sink', 0.80, 'sink'), I('dw', dwW, 'dw', { prio: 2 }), I('spice', 0.30, 'door1', { prio: 3 }), I('hob', hbW, 'hob')];
   } else if (L === 'B') {
     runA = 0.60;
-    left = [I('d1', 0.60, 'drawers3', { prio: 4 }), I('sink', 0.80, 'sink'), I('dw', 0.60, 'dw', { prio: 2 }), I('hob', 0.60, 'hob'), I('spice', 0.30, 'door1', { prio: 3 })];
+    left = [I('d1', 0.60, 'drawers3', { prio: 4 }), I('sink', 0.80, 'sink'), I('dw', dwW, 'dw', { prio: 2 }), I('hob', hbW, 'hob'), I('spice', 0.30, 'door1', { prio: 3 })];
   } else {
-    left = [I('corner', 0.80, mode === 'pared' ? 'drawers3' : 'blind', { prio: 5 }), I('hob', 0.60, 'hob')];
-    right = [I('sink', 0.90, 'sink'), I('dw', 0.60, 'dw', { prio: 3 }), I('washer', 0.60, 'washer', { prio: 2 }), I('dryer', 0.60, 'dryer', { prio: 1 }), I('end', 0.08, 'filler')];
+    left = [I('corner', 0.80, mode === 'pared' ? 'drawers3' : 'blind', { prio: 5 }), I('hob', hbW, 'hob')];
+    right = [I('sink', 0.90, 'sink'), I('dw', dwW, 'dw', { prio: 3 }), I('washer', wmW, 'washer', { prio: 2 }), I('dryer', dmW, 'dryer', { prio: 1 }), I('end', 0.08, 'filler')];
   }
   const run = packRun(runA, W, left, right);
   met.dropped.push(...run.dropped.map(d => d.id).filter(Boolean));
@@ -650,12 +663,13 @@ function buildLayout() {
   const leftLen = leftTo - leftFrom;
   if (L === 'A') {
     const lg = new THREE.Group(); g.add(lg);
-    const z0 = 0.61, avail = leftTo - z0;
-    const n = avail >= 1.22 ? 2 : avail >= 0.62 ? 1 : 0;
+    const z0 = 0.61, avail = leftTo - z0, wm = A.washerW + 0.005, dm = A.dryerW + 0.005;
+    const n = avail >= wm + dm + 0.02 ? 2 : avail >= wm + 0.02 ? 1 : 0;
     if (n < 2) met.dropped.push(n === 1 ? 'dryer' : 'washer', ...(n === 0 ? ['dryer'] : []));
-    const zEnd = z0 + n * 0.6025;
-    if (n >= 1) lg.add(place(washer('washer', layoutAnim), 0.015, z0 + 0.597, Math.PI / 2));
-    if (n >= 2) lg.add(place(washer('dryer', layoutAnim), 0.015, z0 + 0.602 + 0.597, Math.PI / 2));
+    const zEnd = z0 + (n >= 1 ? wm : 0) + (n >= 2 ? dm : 0);
+    if (n >= 1) lg.add(place(washer('washer', layoutAnim), 0.015, z0 + A.washerW, Math.PI / 2));
+    if (n >= 2) lg.add(place(washer('dryer', layoutAnim), 0.015, z0 + wm + A.dryerW, Math.PI / 2));
+    met.laundryUnder = true;
     if (n > 0) {
       B(lg, 0, 0.62, 0, Y_CT, zEnd, zEnd + 0.02, mats.low);
       B(lg, 0, 0.62, Y_CT - 0.012, Y_CT, 0.62, zEnd, M.carcass, { cast: false });
@@ -664,20 +678,23 @@ function buildLayout() {
       const shelfM = surfMat(0.26, zEnd - 0.66, true);
       [1.55, 1.92].forEach(y => B(lg, 0, 0.26, y, y + 0.03, 0.66, zEnd, shelfM));
       [[0.8, 1.55], [1.05, 1.55], [1.5, 1.92], [1.25, 1.92]].filter(([z]) => z < zEnd - 0.1).forEach(([z, y], i) => cyl(lg, 0.06, 0.18, [M.ceramic, M.white, M.board, M.ceramic][i], 0.12, y + 0.12, z, 20));
-      tag(g, 'Lavadora 60', '59,7 × 56,5 × 85', 0.35, 1.02, leftFrom + 0.3);
-      if (n >= 2) tag(g, 'Secadora 60', '59,7 × 60 × 85', 0.35, 1.02, leftFrom + 0.9);
+      tag(g, 'Lavadora', dimsTxt(A.washerW, A.washerD, A.washerH), 0.35, 1.02, z0 + wm / 2);
+      if (n >= 2) tag(g, 'Secadora', dimsTxt(A.dryerW, A.dryerD, A.dryerH), 0.35, 1.02, z0 + wm + dm / 2);
       met.leftEnd = zEnd + 0.02; met.leftWhat = n >= 2 ? 'la secadora' : 'la lavadora';
       met.washerPos = { x: 0, z: 0.9 };
     }
   } else if (L === 'B') {
-    if (leftLen >= 0.66) {
+    const colW = Math.max(A.washerW, A.dryerW) + 0.053;
+    if (leftLen >= colW + 0.01) {
       const col = new THREE.Group(); g.add(col);
-      const cz0 = 0.64, cz1 = cz0 + 0.65, cd = 0.66;
+      const cz0 = 0.64, cz1 = cz0 + colW, cd = Math.max(0.66, Math.max(A.washerD, A.dryerD) + 0.06);
+      const kit = A.washerH, dryY = kit + 0.02, capY = Math.min(TOPY - 0.12, dryY + A.dryerH + 0.04);
+      met.stackH = dryY + A.dryerH;
       B(col, 0, cd, 0, TOPY, cz0, cz0 + 0.019, mats.high); B(col, 0, cd, 0, TOPY, cz1 - 0.019, cz1, mats.high);
-      B(col, 0, cd - 0.02, 1.76, TOPY, cz0 + 0.019, cz1 - 0.019, M.carcass); B(col, cd - 0.02, cd, 1.764, TOPY - 0.004, cz0 + 0.02, cz1 - 0.02, mats.high);
-      B(col, 0.03, cd - 0.02, 0.85, 0.87, cz0 + 0.019, cz1 - 0.019, M.steelDark);
-      col.add(place(washer('washer', layoutAnim), 0.035, cz1 - 0.026, Math.PI / 2));
-      col.add(place(washer('dryer', layoutAnim), 0.035, cz1 - 0.026, Math.PI / 2, 0.87));
+      B(col, 0, cd - 0.02, capY, TOPY, cz0 + 0.019, cz1 - 0.019, M.carcass); B(col, cd - 0.02, cd, capY + 0.004, TOPY - 0.004, cz0 + 0.02, cz1 - 0.02, mats.high);
+      B(col, 0.03, cd - 0.02, kit, kit + 0.02, cz0 + 0.019, cz1 - 0.019, M.steelDark);
+      col.add(place(washer('washer', layoutAnim), 0.035, cz0 + 0.026 + A.washerW, Math.PI / 2));
+      col.add(place(washer('dryer', layoutAnim), 0.035, cz0 + 0.026 + A.dryerW, Math.PI / 2, dryY));
       tag(g, 'Columna lavado', 'Lavadora + secadora apiladas', 0.33, 2.35, (cz0 + cz1) / 2);
       met.leftEnd = cz1; met.leftWhat = 'la columna de lavado'; met.washerPos = { x: 0, z: (cz0 + cz1) / 2 };
       if (leftTo - cz1 >= 0.35) { B(g, 0, 0.24, 1.55, 1.58, cz1 + 0.07, leftTo - 0.04, surfMat(0.24, leftTo - cz1 - 0.11, true)); plant(g, 0.12, cz1 + 0.25, 1.58, 0.6); }
@@ -695,9 +712,9 @@ function buildLayout() {
   if (mode === 'pared') {
     const tw = new THREE.Group(); g.add(tw);
     // local x crece desde la esquina del quiebro hacia la puerta
-    const len = twX1 - twX0, pantryW = len - 1.56 >= 0.30 ? Math.min(len - 1.56, 1.20) : 0;
+    const p0 = 0.60, p1 = 0.60 + housingW;
+    const len = twX1 - twX0, pantryW = len - p1 >= 0.30 ? Math.min(len - p1, 1.20) : 0;
     tw.add(place(tallUnit('oven', 0.60, mats), 0, 0));
-    const p0 = 0.60, p1 = 1.56;
     B(tw, p0, p0 + 0.02, 0, TOPY, 0, 0.64, mats.low); B(tw, p1 - 0.02, p1, 0, TOPY, 0, 0.64, mats.low);
     B(tw, p0 + 0.02, p1 - 0.02, FR.h + 0.05, TOPY, 0, Z_CAR, M.carcass);
     B(tw, p0 + 0.024, (p0 + p1) / 2 - 0.002, FR.h + 0.054, TOPY - 0.004, Z_CAR, Z_FR, mats.high);
@@ -711,7 +728,7 @@ function buildLayout() {
     met.housing = [twX1 - p1, twX1 - p0]; met.pantryW = pantryW;
     tag(g, 'Torre horno + micro', 'columna 60', twX1 - 0.3, 2.35, D - 0.3);
     if (pantryW) tag(g, 'Despensa', `${cm(pantryW)} × 217`, twX1 - p1 - pantryW / 2, 2.35, D - 0.3);
-    tag(g, 'Nevera LG empotrada', '91,3 × 73,5 × 179', fx, 1.62, met.fridge.z + 0.2);
+    tag(g, 'Nevera empotrada', dimsTxt(FR.w, FR.d, FR.h), fx, Math.min(1.62, FR.h - 0.1), met.fridge.z + 0.2);
     place(fridge.userData.body, fx + FR.w / 2, D - FR.back, Math.PI);
     fridge.userData.fgAnim.open = 1.9;
     met.pass = met.fridge.z - 0.62;
@@ -720,7 +737,7 @@ function buildLayout() {
     place(fridge.userData.body, G.FRX1, G.FRZ0, -Math.PI / 2);
     fridge.userData.fgAnim.open = 1.57;
     met.fridge = { x: G.FRX0, z: G.FRZ0 + FR.w / 2, mode };
-    tag(g, 'Nevera LG americana', '91,3 × 73,5 × 179', G.FRX0 + FR.d / 2, FR.h + 0.18, G.FRZ0 + FR.w / 2);
+    tag(g, 'Nevera americana', dimsTxt(FR.w, FR.d, FR.h), G.FRX0 + FR.d / 2, FR.h + 0.18, G.FRZ0 + FR.w / 2);
     met.pass = G.FRZ0 - 0.62;
     met.doorHitsFridge = G.DOOR1 > G.FRX0 - 0.05;
     dim(ldims, [G.FRX0 - 0.25, 0.02, 0.62], [G.FRX0 - 0.25, 0.02, G.FRZ0], `paso ${fmt(met.pass)}`, true);
@@ -744,7 +761,8 @@ function buildLayout() {
   }
 
   // Etiquetas y atrezo de la pared larga
-  const tags = { sink: ['Fregadero', w => `${cm(w)} cm`, 1.10, 0.3], dw: ['Lavavajillas 60', () => '59,8 × 55 × 82', 1.02, 0.55], washer: ['Lavadora 60', () => '59,7 × 56,5 × 85', 0.72, 1.0], dryer: ['Secadora 60', () => '59,7 × 60 × 85', 1.02, 0.55], hob: ['Placa + campana', () => '60 cm', 1.62, 0.3] };
+  const tags = { sink: ['Fregadero', w => `${cm(w)} cm`, 1.10, 0.3], dw: ['Lavavajillas', () => dimsTxt(A.dwW - 0.002, 0.55, 0.82), 1.02, 0.55], washer: ['Lavadora', () => dimsTxt(A.washerW, A.washerD, A.washerH), 0.72, 1.0], dryer: ['Secadora', () => dimsTxt(A.dryerW, A.dryerD, A.dryerH), 1.02, 0.55], hob: ['Placa + campana', () => `${c1(A.hobW)} cm`, 1.62, 0.3] };
+  if (P.washer || P.dryer) met.laundryUnder = true;
   for (const [id, [t, d, y, z]] of Object.entries(tags)) if (P[id]) tag(g, t, d(P[id].w), P[id].x, y, z);
   if (P.washer) met.washerPos = { x: P.washer.x, z: 0 };
   const flexItems = run.items.filter(i => i.flex);
@@ -799,7 +817,7 @@ function buildBoiler(g, x0, x1, mats) {
 
 /* ───────── Panel: electrodomésticos y comprobaciones (textos en js/info.js) ───────── */
 function renderInfo() {
-  const { apps, checks } = panelInfo({ L: state.layout, mode: fridgeMode(), want: state.fridgePos, met: MET, room: G, fmt, cm, names: NAMES, boiler: BOILER });
+  const { apps, checks } = panelInfo({ L: state.layout, mode: fridgeMode(), want: state.fridgePos, met: MET, room: G, ap: state.appl, under: UNDER_COUNTER, fmt, cm, c1, dimsTxt, names: NAMES, boiler: BOILER });
   document.getElementById('apps').innerHTML = apps.map(([n, d, w]) => `<div class="row"><span class="n">${n}</span><span class="d">${d}</span><span class="w">${w}</span></div>`).join('');
   document.getElementById('checks').innerHTML = checks.map(([s, l, t, x]) => `<div class="check"><span class="pill ${s}">${l}</span><span class="t">${t}</span><span class="x">${x}</span></div>`).join('');
   $('st-area').textContent = `${fmt(G.area, 1)} m²`;
@@ -933,11 +951,25 @@ const FIELDS = [
   ['H', 'Altura del techo'], ['doorX', 'Puerta: a la esquina'], ['doorW', 'Puerta: ancho'],
   ['fixW', 'Ventana fija'], ['patioW', 'Puerta al patio'],
 ];
+const AFIELDS = [
+  ['fridgeW', 'Nevera: ancho'], ['fridgeD', 'Nevera: fondo'], ['fridgeH', 'Nevera: alto'], ['dwW', 'Lavavajillas: ancho'],
+  ['washerW', 'Lavadora: ancho'], ['washerD', 'Lavadora: fondo'], ['washerH', 'Lavadora: alto'], ['hobW', 'Placa: ancho'],
+  ['dryerW', 'Secadora: ancho'], ['dryerD', 'Secadora: fondo'], ['dryerH', 'Secadora: alto'],
+];
+function sanitizeAppliances(a) {
+  const out = { ...DEFAULT_APPLIANCES, ...a };
+  for (const [k, [lo, hi]] of Object.entries(APPLIANCE_LIMITS)) out[k] = Math.min(Math.max(Number(out[k]) || DEFAULT_APPLIANCES[k], lo), hi);
+  return out;
+}
 function roomForm() {
   const form = $('room-form');
-  $('m-fields').innerHTML = FIELDS.map(([k, label]) => `<label class="m-field" data-k="${k}"><span>${label}</span><span class="m-in"><input type="number" id="m-${k}" inputmode="numeric" step="1" min="${Math.round(ROOM_LIMITS[k][0] * 100)}" max="${Math.round(ROOM_LIMITS[k][1] * 100)}"><em>cm</em></span></label>`).join('');
-  const fill = r => FIELDS.forEach(([k]) => { $(`m-${k}`).value = cm(r[k]); });
-  const read = () => Object.fromEntries(FIELDS.map(([k]) => [k, (parseFloat($(`m-${k}`).value) || 0) / 100]));
+  const field = (k, label, lim, step) => `<label class="m-field" data-k="${k}"><span>${label}</span><span class="m-in"><input type="number" id="m-${k}" inputmode="decimal" step="${step}" min="${Math.round(lim[0] * 100)}" max="${Math.round(lim[1] * 100)}"><em>cm</em></span></label>`;
+  $('m-fields').innerHTML = FIELDS.map(([k, label]) => field(k, label, ROOM_LIMITS[k], 1)).join('');
+  $('a-fields').innerHTML = AFIELDS.map(([k, label]) => field(k, label, APPLIANCE_LIMITS[k], 0.1)).join('');
+  const val = k => { const v = String($(`m-${k}`).value).replace(',', '.'); return (parseFloat(v) || 0) / 100; };
+  const fill = (r, a = state.appl) => { FIELDS.forEach(([k]) => { $(`m-${k}`).value = cm(r[k]); }); AFIELDS.forEach(([k]) => { $(`m-${k}`).value = Math.round(a[k] * 1000) / 10; }); };
+  const read = () => Object.fromEntries(FIELDS.map(([k]) => [k, val(k)]));
+  const readA = () => Object.fromEntries(AFIELDS.map(([k]) => [k, val(k)]));
   let focusKey = null;
   const draw = () => drawPlan(read(), focusKey);
   form.addEventListener('input', draw);
@@ -946,10 +978,12 @@ function roomForm() {
   form.addEventListener('submit', e => {
     e.preventDefault();
     const { room, notes } = sanitizeRoom(read());
-    setRoom(room); fill(room); draw();
-    $('m-msg').textContent = notes.length ? notes.join(' ') : 'Medidas aplicadas.';
+    const appl = sanitizeAppliances(readA());
+    const clamped = AFIELDS.some(([k]) => Math.abs(appl[k] - readA()[k]) > 0.0005);
+    setRoom(room, appl); fill(room, appl); draw();
+    $('m-msg').textContent = [...notes, clamped ? 'Alguna medida de electrodoméstico estaba fuera de rango y la he ajustado.' : ''].filter(Boolean).join(' ') || 'Medidas aplicadas.';
   });
-  $('m-reset').onclick = () => { setRoom({ ...DEFAULT_ROOM }); fill(state.room); draw(); $('m-msg').textContent = 'Vuelven las medidas originales.'; };
+  $('m-reset').onclick = () => { setRoom({ ...DEFAULT_ROOM }, { ...DEFAULT_APPLIANCES }); fill(state.room, state.appl); draw(); $('m-msg').textContent = 'Vuelven las medidas originales.'; };
   fill(state.room); draw();
   return { fill, draw };
 }
@@ -976,27 +1010,34 @@ function drawPlan(r, focusKey) {
   if (g.hasPatio || g.hasFix) s += txt('patioW', X(g.W) + 6, Y(Math.max(g.PD0 || 0, 0.3)) + 4, 'patio', 'start');
   $('room-svg').innerHTML = s;
 }
-function setRoom(room) {
-  state.room = { ...room }; G = computeRoom(state.room);
-  buildRoom(); buildLayout(); syncWater(); saveHash(); goView(currentView, true);
+function setRoom(room, appl = state.appl) {
+  state.room = { ...room }; state.appl = { ...appl };
+  syncFR(); G = computeRoom(state.room);
+  buildFridge(); buildRoom(); buildLayout(); syncWater(); saveHash(); goView(currentView, true);
 }
 
 /* ───────── Enlace compartible: #C.pared.012301[.m478-264-…] ───────── */
-const CATS = Object.keys(CATALOG), RKEYS = Object.keys(DEFAULT_ROOM);
+const CATS = Object.keys(CATALOG), RKEYS = Object.keys(DEFAULT_ROOM), AKEYS = Object.keys(DEFAULT_APPLIANCES);
 function saveHash() {
   const code = CATS.map(c => Math.max(0, CATALOG[c].options.findIndex(o => o.id === state.fin[c]))).join('');
   const parts = [state.layout, state.fridgePos, code];
   if (RKEYS.some(k => cm(state.room[k]) !== cm(DEFAULT_ROOM[k]))) parts.push('m' + RKEYS.map(k => cm(state.room[k])).join('-'));
+  const mm = v => Math.round(v * 1000);
+  if (AKEYS.some(k => mm(state.appl[k]) !== mm(DEFAULT_APPLIANCES[k]))) parts.push('a' + AKEYS.map(k => mm(state.appl[k])).join('-'));
   try { history.replaceState(null, '', '#' + parts.join('.')); } catch { }
 }
 function loadHash(h) {
-  const m = /^([ABC])\.(pared|hueco)\.([0-3]{6})(?:\.m([\d-]+))?$/.exec(h);
+  const m = /^([ABC])\.(pared|hueco)\.([0-3]{6})(?:\.m([\d-]+))?(?:\.a([\d-]+))?$/.exec(h);
   if (!m) return false;
   state.layout = m[1]; state.fridgePos = m[2];
   CATS.forEach((c, i) => { state.fin[c] = CATALOG[c].options[+m[3][i]].id; });
   if (m[4]) {
     const v = m[4].split('-').map(Number);
     if (v.length === RKEYS.length && v.every(n => Number.isFinite(n))) state.room = sanitizeRoom(Object.fromEntries(RKEYS.map((k, i) => [k, v[i] / 100]))).room;
+  }
+  if (m[5]) {
+    const v = m[5].split('-').map(Number);
+    if (v.length === AKEYS.length && v.every(n => Number.isFinite(n))) state.appl = sanitizeAppliances(Object.fromEntries(AKEYS.map((k, i) => [k, v[i] / 1000])));
   }
   return true;
 }
@@ -1040,14 +1081,14 @@ function frame(now) {
 /* ───────── Arranque ───────── */
 const hash = location.hash.slice(1);
 if (!loadHash(hash) && ['A', 'B', 'C'].includes(hash)) state.layout = hash;
-G = computeRoom(state.room);
-syncButtons(); applyRoomFinishes(); renderFinishUI(); buildRoom(); buildLayout(); syncWater(); setQuality();
+syncFR(); G = computeRoom(state.room);
+syncButtons(); applyRoomFinishes(); renderFinishUI(); buildFridge(); buildRoom(); buildLayout(); syncWater(); setQuality();
 const form = roomForm();
 goView(['entrada', 'patio', 'nevera', 'iso', 'planta'].includes(hash) ? hash : 'iso', true);
 requestAnimationFrame(t => { last = t; loop(t); setTimeout(() => $('loading').classList.add('gone'), 150); });
 warmUp(() => renderFinishUI());   // miniaturas del resto de acabados, en ratos libres
 window.__kitchen = {
   frame: () => frame(performance.now()), passes: { gtao, bloom }, state, goView, buildLayout, applyNight, allAnim, applyAll, setQuality,
-  setRoom: r => { setRoom(sanitizeRoom({ ...state.room, ...r }).room); form.fill(state.room); form.draw(); }, metrics: () => MET, room: () => G,
+  setRoom: (r, a) => { setRoom(sanitizeRoom({ ...state.room, ...r }).room, sanitizeAppliances({ ...state.appl, ...(a || {}) })); form.fill(state.room, state.appl); form.draw(); }, metrics: () => MET, room: () => G,
   setOpen(v) { state.open = v; openP = v ? 1 : 0; allAnim().forEach(a => a.obj[a.key] = a.closed + (a.open - a.closed) * openP); },
 };

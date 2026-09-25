@@ -84,9 +84,19 @@ for (const layout of ['A', 'B', 'C']) {
   const n = await page.evaluate(() => document.querySelectorAll('#checks .check').length);
   check(s.std > 8 && n >= 5, `Medidas propias · distribución ${layout}: se dibuja y hay ${n} comprobaciones`);
 }
+// Electrodomésticos: nevera más estrecha y una lavadora demasiado alta para ir bajo encimera
+await page.evaluate(() => { const k = window.__kitchen; k.state.layout = 'C'; });
+for (const [k, v] of [['fridgeW', 84], ['fridgeD', 70.5], ['washerH', 90]]) await page.fill(`#m-${k}`, String(v));
+await page.click('#m-apply');
+const ap = await page.evaluate(() => ({ appl: window.__kitchen.state.appl, hash: location.hash, checks: [...document.querySelectorAll('#checks .check .t')].map(e => e.textContent), apps: document.getElementById('apps').textContent }));
+check(Math.abs(ap.appl.fridgeW - 0.84) < 1e-6 && Math.abs(ap.appl.fridgeD - 0.705) < 1e-6, 'Medidas de la nevera aplicadas (84 × 70,5)');
+check(ap.apps.includes('84 × 70,5 × 179'), 'El panel muestra las nuevas medidas de la nevera');
+check(ap.checks.includes('Altura bajo encimera'), 'Aviso si la lavadora no entra bajo la encimera');
+check(/\.a840-705-/.test(ap.hash), `Las medidas de los electrodomésticos van en el enlace (${ap.hash})`);
+{ const s = await renderStats(); check(s.std > 8, 'La escena se dibuja con los electrodomésticos cambiados'); }
 await page.click('#m-reset');
 const back = await page.evaluate(() => ({ W: window.__kitchen.room().W, hash: location.hash }));
-check(Math.abs(back.W - 4.78) < 1e-6 && !/\.m/.test(back.hash), 'Volver a las medidas originales');
+check(Math.abs(back.W - 4.78) < 1e-6 && !/\.[ma]\d/.test(back.hash), 'Volver a las medidas originales');
 
 const hash = await page.evaluate(() => location.hash);
 check(/^#[ABC]\.(pared|hueco)\.[0-3]{6}$/.test(hash), `Enlace compartible con el diseño (${hash})`);

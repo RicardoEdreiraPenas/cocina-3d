@@ -13,6 +13,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 ## Qué hace
 
 - En «Mis medidas» cambias las paredes, la altura del techo, la puerta de entrada, la ventana fija y la puerta al patio. Un plano pequeño se va dibujando mientras escribes y, al aplicar, la cocina se rehace: los muebles se reparten solos en módulos de 60, 45, 40 y 30 cm, y el panel avisa de lo que no cabe. Si la pared de la puerta mide lo mismo que la larga, la planta es rectangular.
+- En el mismo sitio puedes poner las medidas de tus electrodomésticos: ancho, fondo y alto de la nevera, la lavadora y la secadora, y el ancho del lavavajillas y de la placa. Los huecos se ajustan y el panel avisa, por ejemplo, si la lavadora no entra bajo la encimera o si la nevera sobresale del quiebro.
 
   ![Mis medidas con una cocina rectangular de 4,00 × 3,20](docs/mis-medidas.jpg)
 
@@ -33,7 +34,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 - En calidad alta usa oclusión ambiental (GTAO), sombras de 4096 px y bloom por la noche. En el móvil arranca en modo rápido.
 - Comprueba medidas que me importaban: pasos libres, apertura de puertas, triángulo de trabajo, distancia a las tomas de agua y ventilación de la nevera y del calentador de gas. Todo se recalcula con tus medidas.
 - Hay cinco vistas (desde la puerta, desde el patio, nevera, maqueta y planta). También muestra las cotas del croquis y las puertas se abren con animación.
-- El diseño se guarda en la URL, así que puedes pasar el enlace a quien quieras. Por ejemplo `#C.pared.000000`, y si has cambiado las medidas también van dentro: `#C.pared.000000.m360-300-360-95-260-120-80-64-80`.
+- El diseño se guarda en la URL, así que puedes pasar el enlace a quien quieras. Por ejemplo `#C.pared.000000`, y si has cambiado las medidas también van dentro: `#C.pared.000000.m360-300-360-95-260-120-80-64-80`. Las de los electrodomésticos se añaden detrás con `.a` (en milímetros).
 - Con «Guardar imagen» te descargas la vista que tengas en pantalla en PNG, a unos 2400 px de ancho. Es lo que uso para enseñárselo al carpintero.
 
 | Salvia | Mediterráneo | Noche |
@@ -65,7 +66,7 @@ Lo más rápido es «Mis medidas», en la propia web. Si quieres que tu cocina s
 
 - `DEFAULT_ROOM` son las medidas de partida, en metros: pared larga, pared izquierda, pared de la puerta, quiebro, techo, puerta de entrada, ventana fija y puerta al patio.
 - `WATER` marca dónde empiezan las tomas de agua y `BOILER` el mueble del calentador (se puede desactivar).
-- `FRIDGE` tiene las medidas de la nevera y la ventilación trasera.
+- `DEFAULT_APPLIANCES` tiene las medidas de partida de la nevera, el lavavajillas, la lavadora, la secadora y la placa, y `APPLIANCE_LIMITS` los márgenes que acepta el formulario.
 - `CATALOG` y `PRESETS` son los acabados y los estilos. Para añadir un color solo hay que meter otra entrada `{ id, name, type: 'color', color: '#...' }`.
 
 Los muebles se reparten en `buildLayout()`, dentro de [`js/main.js`](js/main.js). Cada distribución dice qué módulos van pegados al principio y cuáles al final de la pared (por ejemplo `I('dw', 0.60, 'dw')` es un lavavajillas de 60 cm), y `packRun()` rellena el hueco del medio. Los textos del panel salen de [`js/info.js`](js/info.js), calculados con las medidas.
