@@ -35,7 +35,7 @@ Puedes probarlo aquí: https://ricardoedreirapenas.github.io/cocina-3d/
 - Comprueba medidas que me importaban: pasos libres, apertura de puertas, triángulo de trabajo, distancia a las tomas de agua y ventilación de la nevera y del calentador de gas. Todo se recalcula con tus medidas.
 - Hay cinco vistas (desde la puerta, desde el patio, nevera, maqueta y planta). También muestra las cotas del croquis y las puertas se abren con animación.
 - El diseño se guarda en la URL, así que puedes pasar el enlace a quien quieras. Por ejemplo `#C.pared.000000`, y si has cambiado las medidas también van dentro: `#C.pared.000000.m360-300-360-95-260-120-80-64-80`. Las de los electrodomésticos se añaden detrás con `.a` (en milímetros).
-- Con «Guardar imagen» te descargas la vista que tengas en pantalla en PNG, a unos 2400 px de ancho. Es lo que uso para enseñárselo al carpintero.
+- Con «Guardar imagen» te descargas la vista que tengas en pantalla en PNG, a unos 2400 px de ancho y con las medidas y etiquetas que estés viendo. Es lo que uso para enseñárselo al carpintero.
 
 | Salvia | Mediterráneo | Noche |
 |---|---|---|

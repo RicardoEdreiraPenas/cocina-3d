@@ -944,7 +944,11 @@ function saveImage() {
   const pr = Math.min(3, Math.max(1, (window.__kitchenSaveWidth || 2400) / w));   // el test usa un ancho menor
   renderer.setPixelRatio(pr); composer.setPixelRatio(pr); composer.setSize(w, h);
   state.hq = true; frame(performance.now()); state.hq = hq;
-  renderer.domElement.toBlob(blob => {
+  // La imagen lleva también las etiquetas y las medidas que se ven en pantalla
+  const out = document.createElement('canvas'); out.width = renderer.domElement.width; out.height = renderer.domElement.height;
+  const g = out.getContext('2d'); g.drawImage(renderer.domElement, 0, 0);
+  drawLabels(g, out.width / w);
+  out.toBlob(blob => {
     setQuality();
     if (!blob) { flash('No se pudo generar la imagen'); return; }
     const a = document.createElement('a');
@@ -952,8 +956,36 @@ function saveImage() {
     a.download = `cocina-3d-${(location.hash.slice(1) || 'diseno').replace(/[^\w.-]/g, '')}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-    flash('Imagen guardada');
+    flash('Imagen guardada con medidas y etiquetas');
   }, 'image/png');
+}
+// Copia en el lienzo las etiquetas HTML visibles (cotas y nombres) con sus colores y tipos de letra
+function drawLabels(g, k) {
+  const base = stage.getBoundingClientRect();
+  const box = (el, cs) => {
+    const r = el.getBoundingClientRect(), x = (r.left - base.left) * k, y = (r.top - base.top) * k, bw = r.width * k, bh = r.height * k;
+    if (r.width === 0 || r.right < base.left || r.left > base.right || r.bottom < base.top || r.top > base.bottom) return false;
+    const rad = (parseFloat(cs.borderTopLeftRadius) || 0) * k;
+    g.beginPath(); g.roundRect(x, y, bw, bh, rad); g.fillStyle = cs.backgroundColor; g.fill();
+    const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
+    if (bt > 0) { g.lineWidth = bt * k; g.strokeStyle = cs.borderTopColor; g.stroke(); }
+    else if (bl > 0) { g.fillStyle = cs.borderLeftColor; g.fillRect(x, y, bl * k, bh); }
+    return true;
+  };
+  const text = (el, cs) => {
+    const r = el.getBoundingClientRect(), pl = parseFloat(cs.paddingLeft) || 0, pt = parseFloat(cs.paddingTop) || 0, fs = parseFloat(cs.fontSize);
+    g.font = `${cs.fontWeight} ${fs * k}px ${cs.fontFamily}`; g.fillStyle = cs.color; g.textBaseline = 'top';
+    const lh = parseFloat(cs.lineHeight) || fs * 1.2;
+    g.fillText(el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild.textContent : el.textContent, (r.left - base.left + pl) * k, (r.top - base.top + pt + (lh - fs) / 2) * k);
+  };
+  document.querySelectorAll('#labels > div').forEach(wrap => {
+    if (wrap.style.display === 'none') return;
+    const el = wrap.classList.contains('tag') || wrap.classList.contains('dim') ? wrap : wrap.firstElementChild || wrap;
+    const cs = getComputedStyle(el);
+    if (!box(el, cs)) return;
+    if (el.classList.contains('tag')) el.querySelectorAll('b,span').forEach(c => text(c, getComputedStyle(c)));
+    else text(el, cs);
+  });
 }
 controls.addEventListener('start', () => { tween = null; });
 
