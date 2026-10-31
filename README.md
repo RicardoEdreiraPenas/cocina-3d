@@ -2,7 +2,7 @@
 
 [![Probar y publicar](https://github.com/RicardoEdreiraPenas/cocina-3d/actions/workflows/pages.yml/badge.svg)](https://github.com/RicardoEdreiraPenas/cocina-3d/actions/workflows/pages.yml)
 
-Hice este configurador para diseñar la cocina de mi casa en Albuixech. Es una cocina de 4,78 × 2,64 m con salida al patio, y quería ver cómo quedaba antes de encargar nada. Funciona en el navegador y parte del croquis que dibujé a mano con las medidas reales. Con él pruebo distribuciones, coloco electrodomésticos de tamaño estándar, cambio acabados y compruebo que todo cabe.
+Hice este configurador para diseñar la cocina de mi casa. Es una cocina de 4,78 × 2,64 m con salida al patio, y quería ver cómo quedaba antes de encargar nada. Funciona en el navegador y parte del croquis que dibujé a mano con las medidas reales. Con él pruebo distribuciones, coloco electrodomésticos de tamaño estándar, cambio acabados y compruebo que todo cabe.
 
 Lo comparto por si a alguien le sirve para diseñar la suya. Desde «Mis medidas» puedes meter las de tu cocina y ver cómo se reparten los muebles.
 
